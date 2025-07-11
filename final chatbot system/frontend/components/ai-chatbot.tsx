@@ -45,12 +45,12 @@ const ChatMessage = ({ message, onCopy, onEdit }: { message: Message, onCopy: (t
     <div className={`flex items-end gap-3 mb-5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${isUser ? 'bg-blue-600' : 'bg-slate-600'}`}>
         {isUser ? <User className="w-5 h-5 text-white" /> : <Bot className="w-5 h-5 text-white" />}
-      </div>
+        </div>
       <div className={`p-4 rounded-lg max-w-[80%] shadow-md transition-colors ${isUser ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-100'}`}>
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-          {message.content}
-        </ReactMarkdown>
-      </div>
+            {message.content}
+          </ReactMarkdown>
+        </div>
       <div className="flex items-center gap-1 self-center">
         <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white transition-colors" onClick={() => onCopy(message.content)}><Copy className="w-4 h-4" /></Button>
         {isUser && <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white transition-colors" onClick={() => onEdit(message)}><Edit className="w-4 h-4" /></Button>}
@@ -85,10 +85,10 @@ export function AIChatbot() {
         if (data.length > 0 && !currentSessionId) {
           setCurrentSessionId(data[0].id);
         }
-      }
+          }
     } catch (err) {
       console.error("Failed to fetch sessions", err);
-    }
+        }
   };
 
   const fetchMessages = async (sessionId: string) => {
@@ -150,7 +150,7 @@ export function AIChatbot() {
 
     // If we are editing, call the update endpoint
     if (editingMessage) {
-      try {
+    try {
         const res = await fetch(`${API_URL}/chat/messages/${editingMessage.id}`, {
           method: 'PATCH',
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -188,7 +188,7 @@ export function AIChatbot() {
       });
 
       if (res.ok) {
-        const data = await res.json();
+      const data = await res.json();
         // After sending, refetch messages to get the new user and assistant messages with proper IDs
         await fetchMessages(data.sessionId);
         
@@ -280,7 +280,7 @@ export function AIChatbot() {
                 <Bot className="w-5 h-5 text-white" />
               </div>
               <div className="flex flex-col">
-                CyberBot AI Assistant
+                  CyberBot AI Assistant
                 <span className="text-xs text-slate-400 font-normal">Your AI-Powered SOC Co-pilot</span>
               </div>
             </CardTitle>
@@ -369,13 +369,13 @@ export function AIChatbot() {
                       Cancel
                     </Button>
                   )}
-                  <Button
+                <Button
                     onClick={handleSendMessage}
-                    disabled={!input.trim() || isLoading}
+                  disabled={!input.trim() || isLoading}
                     className="bg-slate-600 hover:bg-slate-500"
-                  >
+                >
                     {editingMessage ? "Save" : <Send className="w-5 h-5" />}
-                  </Button>
+                </Button>
                 </div>
               </div>
             </div>

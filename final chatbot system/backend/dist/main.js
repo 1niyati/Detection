@@ -29,12 +29,7 @@ const dotenv = __importStar(require("dotenv"));
 async function bootstrap() {
     dotenv.config();
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
-    // Enable CORS
-    app.enableCors({
-        origin: 'http://localhost:3005',
-        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-        credentials: true,
-    });
+    app.enableCors();
     await app.listen(3001);
 }
 bootstrap();

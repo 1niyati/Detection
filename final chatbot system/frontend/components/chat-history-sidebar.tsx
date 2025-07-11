@@ -69,7 +69,7 @@ export function ChatHistorySidebar({
           <Bot className="w-4 h-4" />
           <span>SOC Copilot</span>
         </div>
-      </div>
+    </div>
     </aside>
   )
 } 

@@ -7,12 +7,11 @@ import { AuthForm } from "@/components/auth-form"
 import { SecurityDashboard } from "@/components/security-dashboard"
 import { AIChatbot } from "@/components/ai-chatbot"
 import { UserProfile } from "@/components/user-profile"
-import UsersPage from "@/components/users-page" // Corrected import
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Shield, BarChart3, MessageSquare, User, Users as UsersIcon, Menu } from "lucide-react"
+import { Shield, BarChart3, MessageSquare, User, Menu } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -134,7 +133,6 @@ export default function SentinelSOC() {
   // Get available tabs based on user role - only admin gets dashboard
   const availableTabs = [
     ...(canAccessDashboard(user) ? [{ id: "dashboard", label: "Dashboard", icon: BarChart3 }] : []),
-    ...(canAccessDashboard(user) ? [{ id: "users", label: "User Management", icon: UsersIcon }] : []), // Add users tab for admin
     { id: "chat", label: "CyberBot", icon: MessageSquare },
     { id: "profile", label: "Profile", icon: User },
   ]
@@ -205,12 +203,6 @@ export default function SentinelSOC() {
           {canAccessDashboard(user) && (
             <TabsContent value="dashboard" className="mt-0 flex-1">
               <SecurityDashboard />
-            </TabsContent>
-          )}
-
-          {canAccessDashboard(user) && (
-            <TabsContent value="users" className="mt-0 flex-1">
-              <UsersPage />
             </TabsContent>
           )}
 

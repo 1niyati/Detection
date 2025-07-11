@@ -1,15 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { formatDistanceToNow } from 'date-fns';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { getToken } from "@/lib/auth";
 import {
   Table,
   TableBody,
@@ -19,327 +12,234 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
   Users,
-  AlertTriangle,
-  Activity,
-  UserCheck,
-  ShieldCheck,
-  BarChart,
-  PieChartIcon,
-  MessageSquare,
+  Shield,
+  FileText,
+  PlusCircle,
+  Search,
+  Mail,
+  Clock,
 } from "lucide-react";
-import {
-  getDashboardStats,
-  getSecurityAlerts,
-  getLoginActivity,
-  getUserRoles,
-  getRecentActivity,
-  getAllUsers,
-} from "@/lib/dashboard";
-import {
-  Bar,
-  BarChart as RechartsBarChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Pie,
-  PieChart as RechartsPieChart,
-  Cell,
-} from "recharts";
 
-// Define types for our data
-interface Stats {
-  totalUsers: number;
-  suspiciousActivities: number;
-  userRoles: { role: string; count: number }[];
-}
-interface Alert {
-  email: string;
-  timestamp: string;
-  risk_level: "Low" | "Medium" | "High";
-  reason: string;
-}
-interface LoginActivity {
-  date: string;
-  count: number;
-}
-interface UserRole {
-  role: string;
-  count: number;
-}
-interface RecentActivity {
-  id: number;
-  content: string;
-  createdAt: string;
-  session: {
-    user: {
-      name: string;
-      email: string;
-    }
-  }
-}
+const API_URL = "http://localhost:3001";
+
 interface User {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    lastLogin: string | null;
-    createdAt: string;
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "analyst" | "viewer";
+  isApproved: boolean;
+  lastLogin?: string;
 }
 
-const PIE_COLORS = ["#8884d8", "#82ca9d", "#ffc658"];
-
-export function SecurityDashboard() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loginActivity, setLoginActivity] = useState<LoginActivity[]>([]);
-  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const [statsData, alertsData, activityData, rolesData, recentActivityData, allUsersData] = await Promise.all([
-          getDashboardStats(),
-          getSecurityAlerts(),
-          getLoginActivity(),
-          getUserRoles(),
-          getRecentActivity(),
-          getAllUsers(),
-        ]);
-        setStats(statsData);
-        setAlerts(alertsData);
-        setLoginActivity(activityData);
-        setUserRoles(rolesData);
-        setRecentActivity(recentActivityData);
-        setAllUsers(allUsersData);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-  }, []);
-
-  if (loading || !stats) {
+const UserInfoSidebar = ({ user }: { user: User | null }) => {
+  if (!user) {
     return (
-        <div className="flex items-center justify-center h-screen bg-slate-900 text-white">
-            <div className="flex items-center space-x-2">
-                <Activity className="animate-spin h-8 w-8 text-cyan-400" />
-                <span className="text-xl">Loading Dashboard Data...</span>
-            </div>
-        </div>
+      <Card className="w-full lg:w-1/3 bg-slate-800/50 border-slate-700">
+        <CardContent className="p-6 flex flex-col items-center justify-center h-full">
+          <p className="text-slate-400">Select a user to see details</p>
+        </CardContent>
+      </Card>
     );
   }
 
-  const getRoleCount = (role: string) =>
-    stats.userRoles.find((r) => r.role === role)?.count || 0;
-  
-  const adminCount = getRoleCount("admin");
-  const analystCount = getRoleCount("analyst");
+  const getInitials = (name: string) => {
+    const names = name.split(" ");
+    return names.length > 1
+      ? `${names[0][0]}${names[names.length - 1][0]}`
+      : names[0][0];
+  };
 
   return (
-    <div className="p-6 space-y-6 bg-slate-900 text-white min-h-screen">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white mb-2">
-          SOC Activity Dashboard
-        </h1>
-        <p className="text-slate-400">
-          Live monitoring of analyst activity, system users, and security alerts.
-        </p>
-      </div>
+    <Card className="w-full lg:w-1/3 bg-slate-800/50 border-slate-700">
+      <CardHeader className="p-6">
+        <CardTitle className="text-white text-lg">User Information</CardTitle>
+      </CardHeader>
+      <CardContent className="p-6 text-center">
+        <Avatar className="w-24 h-24 mx-auto mb-4 border-4 border-slate-600">
+          <AvatarImage src={`https://i.pravatar.cc/150?u=${user.id}`} />
+          <AvatarFallback className="bg-slate-700 text-slate-300 text-2xl">
+            {getInitials(user.name)}
+          </AvatarFallback>
+        </Avatar>
+        <h3 className="text-xl font-bold text-white">{user.name}</h3>
+        <Badge
+          variant={user.isApproved ? "default" : "destructive"}
+          className={`mt-2 ${
+            user.isApproved ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"
+          }`}
+        >
+          {user.isApproved ? "Active" : "Not Active"}
+        </Badge>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Total Users */}
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-slate-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            <p className="text-xs text-slate-500">
-              {adminCount} Admins, {analystCount} Analysts
-            </p>
-          </CardContent>
-        </Card>
-        {/* Suspicious Activities */}
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Suspicious Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.suspiciousActivities}</div>
-            <p className="text-xs text-slate-500">From detection system</p>
-          </CardContent>
-        </Card>
-        {/* Admins */}
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Administrators</CardTitle>
-            <UserCheck className="h-4 w-4 text-cyan-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{adminCount}</div>
-            <p className="text-xs text-slate-500">Have full system access</p>
-          </CardContent>
-        </Card>
-        {/* Analysts */}
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Security Analysts</CardTitle>
-            <ShieldCheck className="h-4 w-4 text-green-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analystCount}</div>
-            <p className="text-xs text-slate-500">Monitor and investigate alerts</p>
-          </CardContent>
-        </Card>
-      </div>
+        <div className="text-left mt-6 space-y-4">
+          <div className="flex items-center text-slate-300">
+            <Mail className="w-4 h-4 mr-3 text-slate-400" />
+            <span>{user.email}</span>
+          </div>
+          <div className="flex items-center text-slate-300">
+            <Clock className="w-4 h-4 mr-3 text-slate-400" />
+            <span>
+              Last visited:{" "}
+              {user.lastLogin
+                ? new Date(user.lastLogin).toLocaleString()
+                : "Never"}
+            </span>
+          </div>
+          <div className="flex items-start text-slate-300">
+            <Shield className="w-4 h-4 mr-3 mt-1 text-slate-400" />
+            <div>
+              <p className="font-semibold mb-1">Role</p>
+              <Badge variant="outline" className="capitalize border-cyan-500/50 text-cyan-300">
+                {user.role}
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent SOC Activity */}
-        <Card className="lg:col-span-1 bg-slate-800/50 border-slate-700">
-            <CardHeader>
-                <CardTitle className="flex items-center">
-                    <MessageSquare className="w-5 h-5 text-blue-400 mr-2" />
-                    Recent SOC Activity
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    {recentActivity.map(activity => (
-                        <div key={activity.id} className="text-sm">
-                            <p className="truncate">"{activity.content}"</p>
-                            <p className="text-xs text-slate-400">
-                                by {activity.session.user.name} - {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
-                            </p>
-                        </div>
-                    ))}
-                </div>
-            </CardContent>
-        </Card>
+export function SecurityDashboard() {
+  const { toast } = useToast();
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
-        {/* Recent Alerts Table */}
-        <Card className="lg:col-span-2 bg-slate-800/50 border-slate-700">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <AlertTriangle className="w-5 h-5 text-red-400 mr-2" />
-              Recent Security Alerts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-white">User</TableHead>
-                  <TableHead className="text-white">Risk Level</TableHead>
-                  <TableHead className="text-white">Time</TableHead>
-                  <TableHead className="text-white">Reason</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {alerts.slice(0, 5).map((alert, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{alert.email}</TableCell>
-                    <TableCell>
-                        <Badge variant={alert.risk_level === 'High' ? 'destructive' : 'default'}>
-                            {alert.risk_level}
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const token = getToken();
+      if (!token) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to view users.",
+          variant: "destructive",
+        });
+        return;
+      }
+      try {
+        const res = await fetch(`${API_URL}/admin/users`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.status === 403) {
+           toast({
+            title: "Permission Denied",
+            description: "You do not have permission to view this page.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch users");
+        }
+
+        const data = await res.json();
+        setUsers(data);
+        if(data.length > 0) {
+          setSelectedUser(data[0]);
+        }
+      } catch (err) {
+        toast({
+          title: "Error",
+          description: "Could not fetch user data.",
+          variant: "destructive",
+        });
+      }
+    };
+    fetchUsers();
+  }, [toast]);
+
+  return (
+    <div className="h-screen w-full flex bg-slate-900 text-white font-sans">
+      {/* Sidebar */}
+      <nav className="w-64 bg-slate-950/80 border-r border-slate-800 flex flex-col">
+        <div className="p-6 text-2xl font-bold">SOC-Admin</div>
+        <div className="flex-1 p-4 space-y-2">
+          <Button variant="ghost" className="w-full justify-start text-lg bg-slate-700/50">
+            <Users className="mr-3" /> Users
+          </Button>
+          <Button variant="ghost" className="w-full justify-start text-lg">
+            <Shield className="mr-3" /> Roles
+          </Button>
+          <Button variant="ghost" className="w-full justify-start text-lg">
+            <FileText className="mr-3" /> Rules
+          </Button>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="flex-1 p-8 flex flex-col">
+        <header className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold">Users</h1>
+          <div className="flex items-center gap-4">
+            <Button variant="outline" className="text-white border-slate-600 hover:bg-slate-800">
+              <Search className="mr-2 h-4 w-4" /> Role Matrix
+            </Button>
+            <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">
+              <PlusCircle className="mr-2 h-4 w-4" /> New
+            </Button>
+          </div>
+        </header>
+
+        <div className="flex-1 flex gap-8">
+          <Card className="w-full lg:w-2/3 bg-slate-800/50 border-slate-700">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-slate-700 hover:bg-transparent">
+                    <TableHead className="text-white">Full Name</TableHead>
+                    <TableHead className="text-white">Status</TableHead>
+                    <TableHead className="text-white">Email</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow
+                      key={user.id}
+                      onClick={() => setSelectedUser(user)}
+                      className={`cursor-pointer border-slate-800 hover:bg-slate-700/50 ${
+                        selectedUser?.id === user.id ? "bg-slate-700" : ""
+                      }`}
+                    >
+                      <TableCell className="flex items-center gap-4 py-3">
+                        <Avatar className="w-9 h-9">
+                           <AvatarImage src={`https://i.pravatar.cc/150?u=${user.id}`} />
+                           <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span>{user.name}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={user.isApproved ? "default" : "destructive"}
+                           className={
+                            user.isApproved ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"
+                          }
+                        >
+                          {user.isApproved ? "Active" : "Not Active"}
                         </Badge>
-                    </TableCell>
-                    <TableCell>{new Date(alert.timestamp).toLocaleString()}</TableCell>
-                    <TableCell>{alert.reason}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
-      
-      {/* User Management Table */}
-      <Card className="bg-slate-800/50 border-slate-700">
-        <CardHeader>
-            <CardTitle className="flex items-center">
-                <Users className="w-5 h-5 text-cyan-400 mr-2" />
-                User Management
-            </CardTitle>
-        </CardHeader>
-        <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-white">Name</TableHead>
-                  <TableHead className="text-white">Email</TableHead>
-                  <TableHead className="text-white">Role</TableHead>
-                  <TableHead className="text-white">Last Login</TableHead>
-                  <TableHead className="text-white">Joined</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell><Badge variant="outline">{user.role}</Badge></TableCell>
-                    <TableCell>{user.lastLogin ? formatDistanceToNow(new Date(user.lastLogin), { addSuffix: true }) : 'Never'}</TableCell>
-                    <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* User Roles Chart */}
-        <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader>
-                <CardTitle className="flex items-center">
-                    <PieChartIcon className="w-5 h-5 text-cyan-400 mr-2" />
-                    User Role Distribution
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                <RechartsPieChart>
-                    <Pie data={userRoles} dataKey="count" nameKey="role" cx="50%" cy="50%" outerRadius={80} label>
-                        {userRoles.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                        ))}
-                    </Pie>
-                    <Tooltip wrapperClassName="!bg-slate-700 !border-slate-600" />
-                </RechartsPieChart>
-                </ResponsiveContainer>
+                      </TableCell>
+                      <TableCell>{user.email}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
-        </Card>
-
-        {/* Login Activity Chart */}
-        <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader>
-                <CardTitle className="flex items-center">
-                    <BarChart className="w-5 h-5 text-green-400 mr-2" />
-                    Login Activity (Last 7 Days)
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                    <RechartsBarChart data={loginActivity}>
-                        <XAxis dataKey="date" stroke="#888888" fontSize={12} />
-                        <YAxis stroke="#888888" fontSize={12} />
-                        <Tooltip wrapperClassName="!bg-slate-700 !border-slate-600" />
-                        <Bar dataKey="count" fill="#82ca9d" radius={[4, 4, 0, 0]} />
-                    </RechartsBarChart>
-                </ResponsiveContainer>
-            </CardContent>
-        </Card>
-      </div>
+          </Card>
+          <UserInfoSidebar user={selectedUser} />
+        </div>
+      </main>
     </div>
   );
 }
