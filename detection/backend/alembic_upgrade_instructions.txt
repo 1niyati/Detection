@@ -1,0 +1,13 @@
+# IMPORTANT: Database Migration Required
+
+You have changed the User model to include a 'name' field. You must update your database schema.
+
+If you are in development and can reset the database, you can drop the 'users' table and re-run the migration command:
+
+1. Connect to your PostgreSQL database (e.g., using psql):
+   DROP TABLE IF EXISTS users;
+
+2. Recreate the table:
+   python -c "from db import Base, engine; Base.metadata.create_all(bind=engine)"
+
+If you have existing data you want to keep, use Alembic for migrations.
