@@ -114,7 +114,7 @@ let AuthService = class AuthService {
         user.lastLogin = new Date();
         await this.userRepository.save(user);
         console.log('✅ Login successful for:', email);
-        const payload = { email: user.email, sub: user.id, role: user.role };
+        const payload = { email: user.email, userId: user.id, role: user.role };
         const token = this.jwtService.sign(payload);
         return {
             success: true,
@@ -155,7 +155,7 @@ let AuthService = class AuthService {
         });
         await this.userRepository.save(newUser);
         console.log('✅ New user created successfully');
-        const payload = { email: newUser.email, sub: newUser.id, role: newUser.role };
+        const payload = { email: newUser.email, userId: newUser.id, role: newUser.role };
         const token = this.jwtService.sign(payload);
         return {
             success: true,

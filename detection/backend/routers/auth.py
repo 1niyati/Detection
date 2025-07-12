@@ -85,13 +85,36 @@ def login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
         .all()
     )
 
-    # Check if user should be in a temporary lockout period
-    if len(recent_failed_attempts) == 3:
+    # --- 2.5. Enforce Lockout and Blocking ---
+    # This logic now runs BEFORE authentication is attempted.
+    if len(recent_failed_attempts) >= 3:
         last_attempt_time = recent_failed_attempts[0].timestamp
-        if datetime.utcnow() < last_attempt_time + timedelta(seconds=30):
+
+        # Sub-condition 1: The 20-second temporary lockout is still active.
+        if datetime.utcnow() < last_attempt_time + timedelta(seconds=20):
             raise HTTPException(
-                status_code=429, # Too Many Requests
-                detail="Too many failed login attempts. Please try again in 30 seconds.",
+                status_code=429,  # Too Many Requests
+                detail="Too many failed login attempts. Please try again in 20 seconds.",
+            )
+        # Sub-condition 2: The lockout has expired. This attempt is the final straw and triggers a permanent block.
+        else:
+            if user_account and not user_account.is_blocked:
+                # tried to login multiple times with wrong credential
+                user_account.is_blocked = True
+                db.add(user_account)
+                # Create a specific log entry for the permanent block event
+                block_login_activity = LoginActivity(
+                    email=data.email, timestamp=datetime.utcnow(), ip_address=request.client.host,
+                    user_agent=data.user_agent, login_successful=False, status="blocked", is_anomaly=True,
+                    anomaly_reason="Account permanently blocked after multiple failed login attempts.",
+                    severity="Critical",
+                )
+                db.add(block_login_activity)
+                db.commit()
+            # This exception is raised regardless of whether the password was correct, because the account is now blocked.
+            raise HTTPException(
+                status_code=403,
+                detail="This account has been permanently blocked due to too many failed login attempts.",
             )
 
     # --- 3. Feature Extraction (Done for all outcomes) ---
@@ -112,22 +135,8 @@ def login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
 
     # --- 5. Handle Login Outcome ---
     if not user:
-        # This is a FAILED login attempt.
-
-        # Check if this failure should trigger a permanent block.
-        if len(recent_failed_attempts) >= 3:
-            # The user has already failed 3 times and their temp lock has expired. This is their final chance.
-            if user_account:
-                user_account.is_blocked = True
-                db.add(user_account)
-                # Intentionally not logging this failed attempt to avoid confusion, just block.
-                db.commit() 
-            raise HTTPException(
-                status_code=403,
-                detail="This account has been permanently blocked due to too many failed login attempts.",
-            )
-        
-        # Log the normal failed attempt (attempts 1, 2, 3)
+        # This is a FAILED login attempt (1st, 2nd, or 3rd).
+        # The permanent block logic has been moved, so this only handles normal failures.
         failed_login = LoginActivity(
             email=data.email, timestamp=login_time, ip_address=ip_address, country=country,
             asn=asn, user_agent=user_agent_string, device_type=device_type, browser=browser,
@@ -272,37 +281,33 @@ def login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
         "email": user.email,
     }
 
+
 @router.get("/alerts/suspicious-logins")
 def get_suspicious_logins(db: Session = Depends(get_db)):
     """
-    This endpoint retrieves all login activities that have been flagged as anomalous
-    within the last 5 minutes. It is used by the SOC chatbot to report on recent 
-    security events.
+    Returns a list of suspicious login activities from the last 5 minutes.
+    This excludes simple "Invalid credentials" messages to reduce noise.
     """
-    # Define the time window for "real-time" alerts
     five_minutes_ago = datetime.utcnow() - timedelta(minutes=5)
-
+    
     suspicious_logins = (
         db.query(LoginActivity)
         .filter(
             LoginActivity.is_anomaly == True,
-            LoginActivity.timestamp >= five_minutes_ago
+            LoginActivity.timestamp >= five_minutes_ago,
+            LoginActivity.anomaly_reason != 'Invalid credentials'
         )
         .order_by(LoginActivity.timestamp.desc())
         .all()
     )
     
-    if not suspicious_logins:
-        return []
-
-    # Format the data for the chatbot
-    response_data = [{
-        "email": login.email,
-        "timestamp": login.timestamp.isoformat(),
-        "ip_address": login.ip_address,
-        "country": login.country,
-        "reason": login.anomaly_reason,
-        "risk_level": login.severity
-    } for login in suspicious_logins]
-    
-    return response_data
+    # Format the response to be more structured and useful for the frontend
+    return [
+        {
+            "email": login.email,
+            "timestamp": login.timestamp,
+            "risk_level": login.severity,
+            "reason": login.anomaly_reason,
+        }
+        for login in suspicious_logins
+    ]

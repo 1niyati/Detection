@@ -88,13 +88,38 @@ const SECURITY_KEYWORDS = [
     'security', 'hack', 'vulnerability', 'threat', 'malware', 'virus',
     'breach', 'attack', 'firewall', 'encryption', 'password', 'authentication',
     'exploit', 'cybersecurity', 'phishing', 'ransomware', 'incident', 'alert',
-    'suspicious', 'compromise', 'unauthorized', 'detection', 'logins', 'anomaly'
+    'suspicious', 'compromise', 'unauthorized', 'detection', 'logins', 'anomaly', 'attempt', 'failed'
 ];
 let ChatService = class ChatService {
     constructor(sessionRepository, messageRepository) {
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
         this.geminiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent';
+    }
+    getSpecificRecommendation(reason) {
+        const lowerReason = reason.toLowerCase();
+        if (lowerReason.includes('permanently blocked')) {
+            return "This account is now permanently blocked. Review the source IP of the failed attempts for potential network-level blocking.";
+        }
+        const recommendations = [];
+        if (lowerReason.includes('new country')) {
+            recommendations.push("Confirm with the user if they are traveling or using a VPN. If not, immediate account lockout and password reset is advised.");
+        }
+        if (lowerReason.includes('new browser')) {
+            recommendations.push("Verify with the user if they recently started using a new device or browser. If not, a password reset is recommended as a precaution.");
+        }
+        if (lowerReason.includes('unusual time')) {
+            recommendations.push("Verify the legitimacy of this login with the user. If they don't recognize this activity, investigate further and consider a password reset.");
+        }
+        if (lowerReason.includes('ml model')) {
+            recommendations.push("The AI model detected a deviation from normal behavior. A manual review of the user's session data is recommended to determine the nature of the anomaly.");
+        }
+        if (recommendations.length > 0) {
+            // The \n ensures the list starts on a new line, making it a nested list.
+            return "\n- " + recommendations.join('\n- ');
+        }
+        // Fallback for any other reason, though it should be rare with the current setup.
+        return "A generic suspicious activity was detected. You should investigate this user's recent activity and consider temporarily disabling the account if the activity is confirmed to be malicious.";
     }
     isSecurityRelatedQuery(text) {
         const lowerText = text.toLowerCase();
@@ -190,6 +215,15 @@ let ChatService = class ChatService {
             await this.messageRepository.save(userMessage);
             messageHistory.push(userMessage);
         }
+        else {
+            // For internal calls (from edit), just add the updated content to the history for context
+            messageHistory.push({
+                role: 'user',
+                content: newMessageContent,
+                sessionId: session.id,
+                // id, createdAt etc. are not needed for the API call
+            });
+        }
         // Handle special alert query using only the new message
         if (newMessageContent.toLowerCase().includes('suspicious') || newMessageContent.toLowerCase().includes('anomaly') || newMessageContent.toLowerCase().includes('alert')) {
             try {
@@ -200,12 +234,13 @@ let ChatService = class ChatService {
                 if (alerts && alerts.length > 0) {
                     report = `## Suspicious Login Report\n\nI have detected ${alerts.length} suspicious login attempt(s). Here are the details:\n\n`;
                     alerts.forEach((alert, index) => {
+                        const recommendation = this.getSpecificRecommendation(alert.reason);
                         report += `### Alert ${index + 1}\n`;
                         report += `- **User Email:** ${alert.email}\n`;
                         report += `- **Time:** ${new Date(alert.timestamp).toLocaleString()}\n`;
                         report += `- **Risk Level:** ${alert.risk_level}\n`;
                         report += `- **Reason:** ${alert.reason}\n`;
-                        report += `**Recommendation:** You should investigate this user's recent activity and consider temporarily disabling the account if the activity is confirmed to be malicious.\n\n`;
+                        report += `- **Recommendation:** ${recommendation}\n\n`;
                     });
                 }
                 else {

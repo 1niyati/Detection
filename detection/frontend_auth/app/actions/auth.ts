@@ -79,6 +79,13 @@ export async function login(prevState: FormState, formData: FormData): Promise<F
       }
     }
 
+    if (response.status === 403) { // Permanently Blocked
+      return {
+        message: data.detail || "This account is permanently blocked due to suspicious activity.",
+        errors: {},
+      }
+    }
+
     if (!response.ok) {
       return {
         message: data.detail || 'Login failed. Please try again.',
