@@ -1,9 +1,10 @@
-import { Controller, Get, Param, UseGuards, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, ParseUUIDPipe, Post, Body, Query } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../auth/enums/user-role.enum';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -14,6 +15,26 @@ export class AdminController {
   @Get('users')
   async getUsers() {
     return this.adminService.getAllUsers();
+  }
+
+  @Post('users')
+  async createUser(@Body() createUserDto: CreateUserDto) {
+    return this.adminService.createUser(createUserDto);
+  }
+
+  @Get('dashboard-stats')
+  async getStats() {
+    return this.adminService.getDashboardStats();
+  }
+
+  @Get('soc-stats')
+  getSocStats(@Query('date') date?: string) {
+    return this.adminService.getSocStats(date);
+  }
+
+  @Get('activities')
+  async getRecentActivities() {
+    return this.adminService.getRecentActivities();
   }
 
   @Get('users/:id')

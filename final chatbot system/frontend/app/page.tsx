@@ -11,14 +11,16 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Shield, BarChart3, MessageSquare, User, Menu } from "lucide-react"
+import { Shield, BarChart3, MessageSquare, User, Menu, ShieldCheck } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
+import SocAnalystDashboard from "./soc/page"
 import {
   getUserSession,
   saveUserSession,
   clearUserSession,
   canAccessDashboard,
+  canAccessSocDashboard,
   canAccessAIAnalyst,
   isSessionValid,
   type User as UserType,
@@ -38,8 +40,14 @@ export default function SentinelSOC() {
       setUser(existingUser)
       setShowLanding(false)
       setShowAbout(false)
-      // Set default tab based on user role - only admin gets dashboard
-      setActiveTab(canAccessDashboard(existingUser) ? "dashboard" : "chat")
+      // Set default tab based on user role
+      if (canAccessDashboard(existingUser)) {
+        setActiveTab("dashboard")
+      } else if (canAccessSocDashboard(existingUser)) {
+        setActiveTab("soc")
+      } else {
+        setActiveTab("chat")
+      }
     }
     setIsLoading(false)
   }, [])
@@ -76,8 +84,14 @@ export default function SentinelSOC() {
     saveUserSession(loggedInUser)
     setShowLanding(false)
     setShowAbout(false)
-    // Set default tab based on user role - only admin gets dashboard
-    setActiveTab(canAccessDashboard(loggedInUser) ? "dashboard" : "chat")
+    // Set default tab based on user role
+    if (canAccessDashboard(loggedInUser)) {
+      setActiveTab("dashboard")
+    } else if (canAccessSocDashboard(loggedInUser)) {
+      setActiveTab("soc")
+    } else {
+      setActiveTab("chat")
+    }
   }
 
   const handleLogout = () => {
@@ -130,9 +144,10 @@ export default function SentinelSOC() {
     return <AuthForm onAuthSuccess={handleAuthSuccess} onBackToHome={handleBackToHome} />
   }
 
-  // Get available tabs based on user role - only admin gets dashboard
+  // Get available tabs based on user role
   const availableTabs = [
     ...(canAccessDashboard(user) ? [{ id: "dashboard", label: "Dashboard", icon: BarChart3 }] : []),
+    ...(canAccessSocDashboard(user) ? [{ id: "soc", label: "SOC Dashboard", icon: ShieldCheck }] : []),
     { id: "chat", label: "CyberBot", icon: MessageSquare },
     { id: "profile", label: "Profile", icon: User },
   ]
@@ -203,6 +218,12 @@ export default function SentinelSOC() {
           {canAccessDashboard(user) && (
             <TabsContent value="dashboard" className="mt-0 flex-1">
               <SecurityDashboard />
+            </TabsContent>
+          )}
+
+          {canAccessSocDashboard(user) && (
+            <TabsContent value="soc" className="mt-0 flex-1">
+              <SocAnalystDashboard />
             </TabsContent>
           )}
 

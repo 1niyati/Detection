@@ -25,8 +25,8 @@ export async function signup(prevState: FormState, formData: FormData): Promise<
   }
 
   try {
-
-    const response = await fetch(`http://127.0.0.1:8000/auth/signup`, {
+    // Call the local backend server directly
+    const response = await fetch(`https://5a4e4a35f803.ngrok-free.app/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password }),
@@ -64,7 +64,8 @@ export async function login(prevState: FormState, formData: FormData): Promise<F
   }
 
   try {
-    const response = await fetch(`http://127.0.0.1:8000/auth/login`, {
+    // Call the local backend server directly
+    const response = await fetch(`https://5a4e4a35f803.ngrok-free.app/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, user_agent }), // Send user_agent to backend
@@ -93,10 +94,11 @@ export async function login(prevState: FormState, formData: FormData): Promise<F
       }
     }
 
-    // If anomaly is detected, show message on login page and DO NOT create a session.
+    // If anomaly is detected, show a specific message on the login page
+    // and DO NOT create a session.
     if (data.anomaly_detected) {
       return {
-        message: data.message, // "Suspicious Login Detected! (Reason: ...)"
+        message: `Anomaly Detected: ${data.anomaly_details?.message || 'Suspicious activity was observed.'}`,
         errors: {},
       }
     }

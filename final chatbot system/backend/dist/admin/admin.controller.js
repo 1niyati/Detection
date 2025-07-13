@@ -19,12 +19,25 @@ const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const roles_guard_1 = require("../auth/guards/roles.guard");
 const roles_decorator_1 = require("../auth/decorators/roles.decorator");
 const user_role_enum_1 = require("../auth/enums/user-role.enum");
+const create_user_dto_1 = require("./dto/create-user.dto");
 let AdminController = class AdminController {
     constructor(adminService) {
         this.adminService = adminService;
     }
     async getUsers() {
         return this.adminService.getAllUsers();
+    }
+    async createUser(createUserDto) {
+        return this.adminService.createUser(createUserDto);
+    }
+    async getStats() {
+        return this.adminService.getDashboardStats();
+    }
+    getSocStats(date) {
+        return this.adminService.getSocStats(date);
+    }
+    async getRecentActivities() {
+        return this.adminService.getRecentActivities();
     }
     async getUser(id) {
         return this.adminService.getUserById(id);
@@ -36,6 +49,32 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "getUsers", null);
+__decorate([
+    (0, common_1.Post)('users'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_user_dto_1.CreateUserDto]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "createUser", null);
+__decorate([
+    (0, common_1.Get)('dashboard-stats'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getStats", null);
+__decorate([
+    (0, common_1.Get)('soc-stats'),
+    __param(0, (0, common_1.Query)('date')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getSocStats", null);
+__decorate([
+    (0, common_1.Get)('activities'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getRecentActivities", null);
 __decorate([
     (0, common_1.Get)('users/:id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseUUIDPipe)),

@@ -133,6 +133,11 @@ export function canAccessDashboard(user: User): boolean {
   return user.role === "admin"
 }
 
+// SOC Team access control - Admin and Analyst can access SOC dashboard
+export function canAccessSocDashboard(user: User): boolean {
+  return user.role === "analyst"
+}
+
 // All authenticated users can access AI assistant
 export function canAccessAIAnalyst(user: User): boolean {
   return ["admin", "analyst", "viewer"].includes(user.role)

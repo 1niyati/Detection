@@ -4,9 +4,10 @@ sqlalchemy
 psycopg2-binary
 passlib[bcrypt]
 
-scikit-learn
+scikit-learn==1.5.0
 joblib
 pandas
 numpy
-py-user-agents
+user-agents
 requests
+email-validator

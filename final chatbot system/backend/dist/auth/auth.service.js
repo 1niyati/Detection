@@ -100,7 +100,11 @@ let AuthService = class AuthService {
     }
     async login({ email, password }) {
         console.log('\nLogin attempt for:', email);
-        const user = await this.userRepository.findOne({ where: { email } });
+        const user = await this.userRepository
+            .createQueryBuilder('user')
+            .where('user.email = :email', { email })
+            .addSelect('user.password')
+            .getOne();
         if (!user) {
             console.log('❌ User not found:', email);
             throw new common_1.UnauthorizedException('Invalid credentials');
@@ -174,7 +178,7 @@ let AuthService = class AuthService {
 };
 AuthService = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User, 'default')),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         jwt_1.JwtService])
 ], AuthService);

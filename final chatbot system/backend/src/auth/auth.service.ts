@@ -8,7 +8,7 @@ import { User } from './entities/user.entity';
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(User)
+    @InjectRepository(User, 'default')
     private userRepository: Repository<User>,
     private jwtService: JwtService,
   ) {
@@ -73,7 +73,12 @@ export class AuthService {
   async login({ email, password }: { email: string; password: string }) {
     console.log('\nLogin attempt for:', email);
     
-    const user = await this.userRepository.findOne({ where: { email } });
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.email = :email', { email })
+      .addSelect('user.password')
+      .getOne();
+
     if (!user) {
       console.log('❌ User not found:', email);
       throw new UnauthorizedException('Invalid credentials');

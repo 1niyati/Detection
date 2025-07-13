@@ -1,313 +1,275 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Request
-from pydantic import BaseModel, EmailStr
-from sqlalchemy.orm import Session
-from db import get_db, User, create_user, authenticate_user, LoginActivity
-import joblib
 import pandas as pd
-import ipaddress
-from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
+from fastapi import Depends, HTTPException, APIRouter, Request, status
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+import joblib
+import user_agents
+from datetime import datetime
 import os
-from user_agents import parse
-from pathlib import Path
 import requests
-from sqlalchemy import func, and_
-import numpy as np
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+from db import User, LoginActivity, get_db, pwd_context
 
-def get_ip_info(ip_address: str) -> dict:
-    """Looks up Country and ASN for a given IP address using an external API."""
-    # Do not look up private IP addresses.
-    if ipaddress.ip_address(ip_address).is_private:
-        return {"country": "Private", "asn": 0}
+# --- Pydantic Models ---
+class UserLogin(BaseModel):
+    email: str
+    password: str
+    user_agent: str | None = None # Added to receive from frontend
+
+class UserCreate(BaseModel):
+    name: str
+    email: str
+    password: str
+
+# --- Router and Model Loading ---
+router = APIRouter()
+
+try:
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    model_path = os.path.join(base_dir, "model", "login_anomaly_model.pkl")
+    pipeline = joblib.load(model_path)
+    print(f"Advanced anomaly detection pipeline loaded successfully from {model_path}.")
+except FileNotFoundError:
+    print(f"Model file not found at path: {model_path}. Anomaly detection will be disabled.")
+    pipeline = None
+except Exception as e:
+    print(f"An error occurred loading the model: {e}")
+    pipeline = None
+
+def get_ip_info(ip_address: str):
+    """Fetches geolocation and ASN info for an IP address."""
+    if ip_address == "127.0.0.1" or ip_address == "localhost":
+        return {"country": "Local", "asn": 0}
     try:
-        response = requests.get(f"http://ip-api.com/json/{ip_address}")
+        response = requests.get(f"https://ipapi.co/{ip_address}/json/", timeout=5)
         response.raise_for_status()
         data = response.json()
-        
-        asn_str = data.get("as", "AS0").split(" ")[0]
-        asn = int(asn_str[2:]) if asn_str.startswith("AS") else 0
-
         return {
-            "country": data.get("country", "Unknown"),
-            "asn": asn,
+            "country": data.get("country_name", "Unknown"),
+            "asn": int(data.get("asn", "AS0").replace("AS", "") or 0)
         }
-    except (requests.exceptions.RequestException, ValueError) as e:
+    except requests.RequestException as e:
         print(f"Could not get IP info for {ip_address}: {e}")
-        return {"country": "Unknown", "asn": 0}
+        return {"country": "Error", "asn": 0}
 
+# --- Database Utility Functions ---
+def get_user_by_email(db: Session, email: str):
+    return db.query(User).filter(User.email == email).first()
 
-class SignupRequest(BaseModel):
-    name: str
-    email: EmailStr
-    password: str
+def create_login_activity(db: Session, user_id: int, email: str, ip_address: str, user_agent: str, successful: bool, anomaly_detected: bool, risk_level: str, details: dict):
+    login_activity = LoginActivity(
+        user_id=user_id,
+        email=email,
+        timestamp=datetime.now(),
+        ip_address=ip_address,
+        user_agent=user_agent,
+        login_successful=successful,
+        is_anomaly=anomaly_detected,
+        severity=risk_level,
+        status=details.get("status"),
+        login_frequency=details.get("login_frequency"),
+        country=details.get("country"),
+        asn=details.get("asn"),
+        device_type=details.get("device_type"),
+        browser=details.get("browser"),
+        operating_system=details.get("operating_system"),
+        anomaly_score=details.get("anomaly_score"),
+        anomaly_reason=details.get("anomaly_reason")
+    )
+    db.add(login_activity)
+    db.commit()
+    db.refresh(login_activity)
+    return login_activity
 
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-    user_agent: str | None = None # Added to receive data from frontend
+def get_user_login_history(db: Session, user_id: int):
+    return db.query(LoginActivity).filter(LoginActivity.user_id == user_id).order_by(LoginActivity.timestamp.asc()).all()
 
-# Load the anomaly detection model at module level
-# Construct an absolute path to the model file using pathlib for robustness
-SCRIPT_DIR = Path(__file__).parent.resolve()
-MODEL_PATH = SCRIPT_DIR.parent / "model" / "login_anomaly_pipeline.pkl"
-anomaly_pipeline = joblib.load(MODEL_PATH)
+# --- Advanced Feature Engineering ---
+def create_features_for_live_login(user_agent_from_body: str | None, db: Session, user: User, request: Request, login_frequency: int):
+    # Prioritize user agent from body, fall back to header
+    user_agent_str = user_agent_from_body or request.headers.get("user-agent", "unknown")
+    
+    ua = user_agents.parse(user_agent_str)
+    ip_address = request.client.host if request.client else "127.0.0.1"
+    now = datetime.now()
+    login_hour = now.hour
+    
+    try:
+        ip_address_int = sum([int(part) << (8 * i) for i, part in enumerate(reversed(ip_address.split('.')))])
+    except (ValueError, AttributeError):
+        ip_address_int = 0
+    browser = ua.browser.family
+    device_type = "Desktop" if ua.is_pc else "Mobile" if ua.is_mobile else "Tablet" if ua.is_tablet else "Other"
+    operating_system = ua.os.family
 
+    # Get history for browser/ip check, but use passed-in login_frequency
+    history = get_user_login_history(db, user.id)
+    seen_ips = {item.ip_address for item in history}
+    is_new_ip = 1 if ip_address not in seen_ips else 0
 
-@router.post("/signup")
-def signup(data: SignupRequest, db: Session = Depends(get_db)):
-    user = create_user(db, data.name, data.email, data.password)
-    if not user:
-        raise HTTPException(status_code=400, detail="User already exists")
-    return {"message": "User created successfully"}
+    seen_browsers = {user_agents.parse(item.user_agent).browser.family for item in history}
+    is_new_browser = 1 if browser not in seen_browsers else 0
+    
+    # Add back all the features your current model expects
+    day_of_week = now.weekday()
+    is_weekend = 1 if day_of_week >= 5 else 0
+    # Also include the unusual hour feature
+    is_unusual_hour = 1 if login_hour < 9 or login_hour >= 18 else 0
+
+    feature_data = {
+        'browser': [browser], 'device_type': [device_type], 'operating_system': [operating_system],
+        'login_hour': [login_hour], 'ip_address_int': [ip_address_int], 'login_frequency': [login_frequency],
+        'is_new_ip': [is_new_ip], 'is_new_browser': [is_new_browser],
+        'day_of_week': [day_of_week], 'is_weekend': [is_weekend],
+        'is_unusual_hour': is_unusual_hour
+    }
+    return pd.DataFrame(feature_data)
+
+# --- Anomaly Prediction ---
+def get_model_prediction(model_pipeline, features_df: pd.DataFrame):
+    """Just gets the raw prediction and score from the ML model."""
+    try:
+        X_transformed = model_pipeline.named_steps['preprocessor'].transform(features_df)
+        anomaly_score = model_pipeline.named_steps['model'].decision_function(X_transformed)[0]
+        is_anomaly = model_pipeline.predict(features_df)[0] == -1
+        return bool(is_anomaly), float(anomaly_score), None
+    except Exception as e:
+        error_message = f"Model Prediction Error: {e}"
+        print(error_message)
+        return False, 0.0, error_message
+
+# --- API Endpoints ---
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
+def signup(user_create: UserCreate, db: Session = Depends(get_db)):
+    db_user = get_user_by_email(db, email=user_create.email)
+    if db_user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+    hashed_password = pwd_context.hash(user_create.password)
+    new_user = User(name=user_create.name, email=user_create.email, hashed_password=hashed_password)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"message": "User created successfully", "user_id": new_user.id}
 
 @router.post("/login")
-def login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
-    # --- 1. Permanent Block Check ---
-    # First, check if the user account exists and if it is permanently blocked.
-    user_account = db.query(User).filter(User.email == data.email).first()
-    if user_account and user_account.is_blocked:
-        raise HTTPException(
-            status_code=403, # Forbidden
-            detail="This account is permanently blocked due to suspicious activity.",
-        )
+def login(user_login: UserLogin, request: Request, db: Session = Depends(get_db)):
+    try:
+        user = get_user_by_email(db, user_login.email)
 
-    # --- 2. Brute-Force and Lockout Logic ---
-    five_minutes_ago = datetime.utcnow() - timedelta(minutes=5)
-    recent_failed_attempts = (
-        db.query(LoginActivity)
-        .filter(
-            LoginActivity.email == data.email,
-            LoginActivity.login_successful == False,
-            LoginActivity.timestamp >= five_minutes_ago,
-        )
-        .order_by(LoginActivity.timestamp.desc())
-        .all()
-    )
+        # Get login history and frequency once
+        login_history = get_user_login_history(db, user.id) if user else []
+        login_frequency = len(login_history)
 
-    # --- 2.5. Enforce Lockout and Blocking ---
-    # This logic now runs BEFORE authentication is attempted.
-    if len(recent_failed_attempts) >= 3:
-        last_attempt_time = recent_failed_attempts[0].timestamp
-
-        # Sub-condition 1: The 20-second temporary lockout is still active.
-        if datetime.utcnow() < last_attempt_time + timedelta(seconds=20):
-            raise HTTPException(
-                status_code=429,  # Too Many Requests
-                detail="Too many failed login attempts. Please try again in 20 seconds.",
-            )
-        # Sub-condition 2: The lockout has expired. This attempt is the final straw and triggers a permanent block.
-        else:
-            if user_account and not user_account.is_blocked:
-                # tried to login multiple times with wrong credential
-                user_account.is_blocked = True
-                db.add(user_account)
-                # Create a specific log entry for the permanent block event
-                block_login_activity = LoginActivity(
-                    email=data.email, timestamp=datetime.utcnow(), ip_address=request.client.host,
-                    user_agent=data.user_agent, login_successful=False, status="blocked", is_anomaly=True,
-                    anomaly_reason="Account permanently blocked after multiple failed login attempts.",
-                    severity="Critical",
-                )
-                db.add(block_login_activity)
-                db.commit()
-            # This exception is raised regardless of whether the password was correct, because the account is now blocked.
-            raise HTTPException(
-                status_code=403,
-                detail="This account has been permanently blocked due to too many failed login attempts.",
-            )
-
-    # --- 3. Feature Extraction (Done for all outcomes) ---
-    ip_address = request.client.host if request.client else "127.0.0.1"
-    ip_info = get_ip_info(ip_address)
-    country = ip_info["country"]
-    asn = ip_info["asn"]
-    user_agent_string = data.user_agent or "Unknown"
-    user_agent_parsed = parse(user_agent_string)
-    browser = user_agent_parsed.browser.family
-    os_name = user_agent_parsed.os.family
-    device_type = "Mobile" if user_agent_parsed.is_mobile else "Desktop" if user_agent_parsed.is_pc else "Tablet" if user_agent_parsed.is_tablet else "Unknown"
-    login_time = datetime.now()
-    login_hour = login_time.hour
-
-    # --- 4. Authentication ---
-    user = authenticate_user(db, data.email, data.password)
-
-    # --- 5. Handle Login Outcome ---
-    if not user:
-        # This is a FAILED login attempt (1st, 2nd, or 3rd).
-        # The permanent block logic has been moved, so this only handles normal failures.
-        failed_login = LoginActivity(
-            email=data.email, timestamp=login_time, ip_address=ip_address, country=country,
-            asn=asn, user_agent=user_agent_string, device_type=device_type, browser=browser,
-            operating_system=os_name, login_successful=False, status="failed", is_anomaly=True,
-            anomaly_reason="Invalid credentials", severity="High",
-        )
-        db.add(failed_login)
-        db.commit()
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    # --- 6. Handle Successful Login ---
-    # If login is successful, clear past failures to reset the counter.
-    if recent_failed_attempts:
-        for attempt in recent_failed_attempts:
-            db.delete(attempt)
-    db.commit() # Commit the deletion of failed attempts
-
-    # --- 6. Anomaly Detection for Successful Login ---
-    # First, gather historical data and determine behavioral flags.
-    behavioral_reasons = []
-    is_new_browser_for_user = False
-    is_new_country_for_user = False
-    
-    user_history = (
-        db.query(LoginActivity)
-        .filter(LoginActivity.user_id == user.id, LoginActivity.login_successful == True)
-        .all()
-    )
-
-    # We need a reasonable amount of history to make behavioral judgments.
-    if len(user_history) > 3:
-        # Check for new browser
-        known_browsers = {h.browser for h in user_history}
-        if browser not in known_browsers:
-            is_new_browser_for_user = True
-            behavioral_reasons.append("Login from a new browser for this user.")
-
-        # Check for new Operating System
-        known_os = {h.operating_system for h in user_history}
-        if os_name not in known_os:
-            behavioral_reasons.append("Login from a new Operating System for this user.")
-
-        # Check for new country (used as a proxy for new IP region)
-        known_countries = {h.country for h in user_history}
-        if country not in known_countries and country not in ["Private", "Unknown"]:
-            is_new_country_for_user = True
-            behavioral_reasons.append("Login from a new country for this user.")
-
-        # Standalone check for unusual time, as it's a statistical measure
-        known_hours = [h.timestamp.hour for h in user_history]
-        hour_mean = np.mean(known_hours)
-        if abs(login_hour - np.mean(known_hours)) > 2 * np.std(known_hours):
-            behavioral_reasons.append("Login at an unusual time for this user.")
-
-    # Now, prepare the features with the correct behavioral flags for the model.
-    features = pd.DataFrame([{
-        "IP Address (as integer)": int(ipaddress.ip_address(ip_address)),
-        "login_frequency": 1,  # This might be a placeholder from training
-        "is_new_ip": is_new_country_for_user,
-        "is_new_browser": is_new_browser_for_user,
-        "ASN": asn,
-        "Login Hour": login_hour,
-        "User Agent String": user_agent_string,
-        "Browser Name and Version": browser,
-        "OS Name and Version": os_name,
-        "Country": country,
-        "Device Type": device_type
-    }])
-    
-    anomaly_pred = anomaly_pipeline.predict(features)[0]
-    anomaly_score = float(anomaly_pipeline.decision_function(features)[0])
-
-    # The model's prediction is the primary source of the anomaly flag.
-    is_anomaly_ml = bool(anomaly_pred == -1)
-
-    # --- Override Logic ---
-    # Since the provided model is not sensitive, we empower our own rules.
-    # If our rules detect a major change, we will treat it as if the ML model caught it.
-    for reason in behavioral_reasons:
-        if "new browser" in reason or "new country" in reason or "new Operating System" in reason:
-            is_anomaly_ml = True
-            break
-            
-    is_anomaly = is_anomaly_ml or bool(behavioral_reasons)
-
-    # If an anomaly is detected for any reason, ensure the score is negative for consistency.
-    if is_anomaly and anomaly_score > 0:
-        anomaly_score = -anomaly_score
-
-    # -- Build the detailed, itemized anomaly reason string --
-    final_reason_list = []
-    if is_anomaly_ml:
-        final_reason_list.append("Overall pattern flagged by ML model")
-    
-    # The 'behavioral_reasons' list already contains our specific, human-readable reasons
-    final_reason_list.extend(behavioral_reasons)
-
-    if final_reason_list:
-        anomaly_reason = "Suspicious Login Reasons: " + " | ".join(final_reason_list)
-        severity = "High" if "country" in anomaly_reason or "browser" in anomaly_reason else "Medium"
-        message = f"Suspicious Login Detected! (Reason: {anomaly_reason})"
-    else:
-        anomaly_reason = "Normal login"
-        severity = "Low"
-        message = "Login successful"
-    
-    # --- 7. Log Anomaly Details to Console for Testing ---
-    print("\n--- ANOMALY DETECTION LOG ---")
-    print(f"User: {user.email}")
-    print(f"Is Anomaly: {is_anomaly}")
-    print(f"ML Model Anomaly: {is_anomaly_ml}")
-    print(f"Behavioral Anomaly: {bool(behavioral_reasons)}")
-    print(f"Anomaly Score: {anomaly_score:.4f}")
-    print(f"Anomaly Reason: {anomaly_reason}")
-    print(f"Severity: {severity}")
-    print("-----------------------------\n")
-
-    # Determine the final status for the database log based on the anomaly check.
-    # If an anomaly was detected, the login is blocked and therefore is not successful.
-    final_login_successful = not is_anomaly
-    final_status = "success" if final_login_successful else "failed"
-
-    successful_login = LoginActivity(
-        user_id=user.id, email=user.email, timestamp=login_time, ip_address=ip_address, country=country,
-        asn=asn, user_agent=user_agent_string, device_type=device_type, browser=browser,
-        operating_system=os_name, login_frequency=1, login_successful=final_login_successful, status=final_status,
-        is_anomaly=is_anomaly, anomaly_score=anomaly_score, anomaly_reason=anomaly_reason, severity=severity,
-    )
-    db.add(successful_login)
-    db.commit()
-
-    # If an anomaly was detected, deny the login and return the details
-    if is_anomaly:
-        return {"anomaly_detected": True, "message": message}
-
-    # Otherwise, the login is successful and not an anomaly.
-    return {
-        "anomaly_detected": False,
-        "message": "Login successful",
-        "user_id": user.id,
-        "name": user.name,
-        "email": user.email,
-    }
-
-
-@router.get("/alerts/suspicious-logins")
-def get_suspicious_logins(db: Session = Depends(get_db)):
-    """
-    Returns a list of suspicious login activities from the last 5 minutes.
-    This excludes simple "Invalid credentials" messages to reduce noise.
-    """
-    five_minutes_ago = datetime.utcnow() - timedelta(minutes=5)
-    
-    suspicious_logins = (
-        db.query(LoginActivity)
-        .filter(
-            LoginActivity.is_anomaly == True,
-            LoginActivity.timestamp >= five_minutes_ago,
-            LoginActivity.anomaly_reason != 'Invalid credentials'
-        )
-        .order_by(LoginActivity.timestamp.desc())
-        .all()
-    )
-    
-    # Format the response to be more structured and useful for the frontend
-    return [
-        {
-            "email": login.email,
-            "timestamp": login.timestamp,
-            "risk_level": login.severity,
-            "reason": login.anomaly_reason,
+        # Gather details early
+        user_agent_str = user_login.user_agent or request.headers.get("user-agent", "unknown")
+        ua = user_agents.parse(user_agent_str)
+        ip_address = request.client.host if request.client else "127.0.0.1"
+        ip_info = get_ip_info(ip_address)
+        
+        details = {
+            "country": ip_info.get("country"),
+            "asn": ip_info.get("asn"),
+            "device_type": "Desktop" if ua.is_pc else "Mobile" if ua.is_mobile else "Tablet" if ua.is_tablet else "Other",
+            "browser": ua.browser.family,
+            "operating_system": ua.os.family,
+            "login_frequency": login_frequency,
+            "anomaly_score": 0.0,
+            "anomaly_reason": "N/A",
+            "status": "pending"
         }
-        for login in suspicious_logins
-    ]
+
+        if not user or not user.verify_password(user_login.password):
+            if user: # Log failed attempt for existing user
+                details["anomaly_reason"] = "Invalid credentials"
+                details["status"] = "failed"
+                create_login_activity(db, user.id, user.email, ip_address, user_agent_str, False, True, "High", details)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+            )
+        
+        # --- Anomaly Detection on Successful Login ---
+        anomaly_detected = False
+        risk_level = "Low"
+        details["status"] = "success"
+        
+        # Rule: First login is always normal.
+        if not login_history:
+            risk_level = "Normal (First Login)"
+            details["anomaly_reason"] = "First-time login for user"
+        elif pipeline:
+            features_df = create_features_for_live_login(user_login.user_agent, db, user, request, login_frequency)
+            model_is_anomaly, model_score, error_msg = get_model_prediction(pipeline, features_df)
+
+            if error_msg:
+                # If there was an error, log it as a high-risk anomaly
+                anomaly_detected = True
+                risk_level = "High"
+                details["anomaly_score"] = 0.0
+                details["anomaly_reason"] = error_msg
+            else:
+                # --- Hybrid Priority Calculation (based on user's new script) ---
+                
+                # 1. Calculate Rule-Based Score
+                is_new_ip = features_df['is_new_ip'].iloc[0]
+                is_new_browser = features_df['is_new_browser'].iloc[0]
+                is_unusual_hour = features_df['is_unusual_hour'].iloc[0]
+                
+                rule_based_score = is_new_ip + is_new_browser + is_unusual_hour
+
+                # 2. Determine Priority Level
+                if model_is_anomaly or rule_based_score >= 2:
+                    risk_level = "High"
+                elif rule_based_score == 1:
+                    risk_level = "Medium"
+                else:
+                    risk_level = "Low"
+                
+                anomaly_detected = (risk_level == "High" or risk_level == "Medium")
+                details["anomaly_score"] = model_score
+                
+                # --- Detailed Reason Finding ---
+                if anomaly_detected:
+                    reasons_list = []
+                    if is_new_browser: reasons_list.append("new browser")
+                    if is_new_ip: reasons_list.append("new IP address")
+                    if is_unusual_hour: reasons_list.append("unusual login time")
+                    
+                    if reasons_list:
+                        details["anomaly_reason"] = f"Suspicious login flagged. Reasons: {', '.join(reasons_list)}."
+                    # Fallback if rules don't catch it but model does
+                    elif model_is_anomaly:
+                        details["anomaly_reason"] = f"Suspicious login flagged by ML model (Score: {model_score:.4f})"
+                else:
+                    details["anomaly_reason"] = "Normal login based on ML model"
+
+            # --- Console Log ---
+            print("\n--- FEATURES FOR MODEL PREDICTION ---")
+            print(features_df.to_string())
+            print("-------------------------------------\n")
+            print("--- ANOMALY DETECTION LOG ---")
+            print(f"User: {user.email}")
+            print(f"Is Anomaly: {anomaly_detected}")
+            print(f"Anomaly Score: {details['anomaly_score']:.4f}")
+            print(f"Anomaly Reason: {details['anomaly_reason']}")
+            print("-----------------------------\n")
+
+        # If an anomaly is detected, the login is not considered successful from a security standpoint.
+        final_login_successful = not anomaly_detected
+        details["status"] = "success" if final_login_successful else "failed"
+
+        # Record login activity
+        create_login_activity(db, user.id, user.email, ip_address, user_agent_str, final_login_successful, anomaly_detected, risk_level, details)
+
+        return {
+            "message": "Login successful",
+            "user_id": user.id,
+            "anomaly_detected": anomaly_detected,
+            "risk_level": risk_level,
+            "anomaly_details": {"score": details["anomaly_score"], "message": details["anomaly_reason"]}
+        }
+
+    except Exception as e:
+        print(f"An unexpected error occurred during login: {e}")
+        return JSONResponse(status_code=500, content={"message": "An internal server error occurred."}) 

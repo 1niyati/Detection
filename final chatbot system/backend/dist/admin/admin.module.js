@@ -10,13 +10,19 @@ exports.AdminModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const user_entity_1 = require("../auth/entities/user.entity");
+const chat_message_entity_1 = require("../chat/entities/chat-message.entity");
 const admin_controller_1 = require("./admin.controller");
 const admin_service_1 = require("./admin.service");
+const login_activity_entity_1 = require("../soc/entities/login-activity.entity");
+const soc_user_entity_1 = require("../soc/entities/soc-user.entity");
 let AdminModule = class AdminModule {
 };
 AdminModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([user_entity_1.User])],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([user_entity_1.User, chat_message_entity_1.ChatMessage], 'default'),
+            typeorm_1.TypeOrmModule.forFeature([login_activity_entity_1.LoginActivity, soc_user_entity_1.SocUser], 'applicationConnection'),
+        ],
         controllers: [admin_controller_1.AdminController],
         providers: [admin_service_1.AdminService],
     })

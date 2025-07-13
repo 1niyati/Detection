@@ -10,7 +10,7 @@ import { JwtStrategy } from './jwt.strategy';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User], 'default'),
     PassportModule,
     JwtModule.register({
       secret: jwtConstants.secret,

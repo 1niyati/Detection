@@ -26,6 +26,9 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     is_blocked = Column(Boolean, default=False) # Add permanent block flag
 
+    def verify_password(self, plain_password: str) -> bool:
+        return pwd_context.verify(plain_password, self.hashed_password)
+
 class LoginActivity(Base):
     __tablename__ = "login_activity"
     id = Column(Integer, primary_key=True, index=True)
@@ -39,13 +42,14 @@ class LoginActivity(Base):
     device_type = Column(String)
     browser = Column(String)
     operating_system = Column(String)
-    login_frequency = Column(Integer)
     login_successful = Column(Boolean)
-    status = Column(String)
     is_anomaly = Column(Boolean)
-    anomaly_score = Column(Float)
-    anomaly_reason = Column(String)
-    severity = Column(String)
+    anomaly_score = Column(Float, nullable=True)
+    anomaly_reason = Column(String, nullable=True)
+    # --- Missing columns to be added ---
+    status = Column(String, nullable=True)
+    severity = Column(String, nullable=True)
+    login_frequency = Column(Integer, nullable=True)
 
     user = relationship("User")
 
