@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { format } from "date-fns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 import {
   LineChart,
   Line,
@@ -23,9 +26,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts"
-import { Shield, AlertTriangle, Users, Monitor, TrendingUp, Globe, Activity, Clock, Search, Download, RefreshCw, Eye, Flag, MoreHorizontal, AlertCircle, CheckCircle, XCircle } from 'lucide-react'
+import { Shield, AlertTriangle, Users, Monitor, TrendingUp, Globe, Activity, Clock, Search, Download, RefreshCw, Eye, Flag, MoreHorizontal, AlertCircle, CheckCircle, XCircle, Calendar as CalendarIcon } from 'lucide-react'
 
-// Mock data interfaces
+// Data interfaces, kept for type safety
 interface LoginAttempt {
   id: string
   timestamp: Date
@@ -77,279 +80,6 @@ interface DashboardMetrics {
   riskDistribution: Array<{ level: string; count: number; percentage: number }>
 }
 
-// Mock data generators
-const countries = [
-  "United States", "Canada", "United Kingdom", "Germany", "France", "Japan", 
-  "Australia", "Brazil", "India", "China", "Russia", "North Korea", "Iran", "Nigeria", "Romania"
-]
-
-const cities = [
-  "New York", "London", "Tokyo", "Berlin", "Paris", "Sydney", "Toronto", 
-  "Mumbai", "São Paulo", "Moscow", "Beijing", "Lagos", "Bucharest", "Tehran"
-]
-
-const devices = [
-  "Windows Desktop", "MacBook Pro", "iPhone 15", "Samsung Galaxy", "iPad Pro", 
-  "Linux Workstation", "Android Tablet", "Chrome OS", "Surface Pro"
-]
-
-const browsers = [
-  "Chrome 120", "Firefox 121", "Safari 17", "Edge 120", "Opera 105", 
-  "Tor Browser", "Unknown Browser", "Automated Tool"
-]
-
-const usernames = [
-  "john.doe", "jane.smith", "admin", "alice.johnson", "bob.wilson", 
-  "charlie.brown", "diana.prince", "eve.adams", "frank.miller", "grace.hopper"
-]
-
-function generateRandomIP(): string {
-  return `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`
-}
-
-function calculateRiskLevel(factors: {
-  newDevice: boolean
-  newLocation: boolean
-  vpn: boolean
-  tor: boolean
-  suspiciousCountry: boolean
-  failedAttempts: number
-  timeOfDay: number
-}): { level: "Low" | "Medium" | "High" | "Critical"; score: number; reasons: string[] } {
-  let score = 0
-  const reasons: string[] = []
-
-  if (factors.newDevice) {
-    score += 25
-    reasons.push("New device detected")
-  }
-
-  if (factors.newLocation) {
-    score += 30
-    reasons.push("New location")
-  }
-
-  if (factors.vpn) {
-    score += 20
-    reasons.push("VPN detected")
-  }
-
-  if (factors.tor) {
-    score += 50
-    reasons.push("Tor network")
-  }
-
-  if (factors.suspiciousCountry) {
-    score += 40
-    reasons.push("High-risk country")
-  }
-
-  if (factors.failedAttempts > 3) {
-    score += 35
-    reasons.push("Multiple failed attempts")
-  }
-
-  if (factors.timeOfDay < 6 || factors.timeOfDay > 22) {
-    score += 15
-    reasons.push("Unusual login time")
-  }
-
-  const level = score >= 80 ? "Critical" : score >= 60 ? "High" : score >= 30 ? "Medium" : "Low"
-  return { level, score: Math.min(score, 100), reasons }
-}
-
-function generateMockLoginAttempts(count = 500): LoginAttempt[] {
-  const attempts: LoginAttempt[] = []
-  const now = new Date()
-
-  for (let i = 0; i < count; i++) {
-    const timestamp = new Date(now.getTime() - Math.random() * 24 * 60 * 60 * 1000)
-    const username = usernames[Math.floor(Math.random() * usernames.length)]
-    const country = countries[Math.floor(Math.random() * countries.length)]
-    const city = cities[Math.floor(Math.random() * cities.length)]
-    const device = devices[Math.floor(Math.random() * devices.length)]
-    const browser = browsers[Math.floor(Math.random() * browsers.length)]
-    const success = Math.random() > 0.15
-
-    const isNewDevice = Math.random() < 0.1
-    const isNewLocation = Math.random() < 0.08
-    const vpnDetected = Math.random() < 0.05
-    const tor = Math.random() < 0.02
-    const suspiciousCountry = ["Russia", "North Korea", "Iran", "Nigeria", "Romania"].includes(country)
-    const failedAttempts = Math.floor(Math.random() * 8)
-    const timeOfDay = timestamp.getHours()
-
-    const risk = calculateRiskLevel({
-      newDevice: isNewDevice,
-      newLocation: isNewLocation,
-      vpn: vpnDetected,
-      tor,
-      suspiciousCountry,
-      failedAttempts,
-      timeOfDay,
-    })
-
-    attempts.push({
-      id: `login_${i}`,
-      timestamp,
-      userId: `user_${username}`,
-      username,
-      email: `${username}@company.com`,
-      ipAddress: generateRandomIP(),
-      country,
-      city,
-      device,
-      browser,
-      userAgent: `Mozilla/5.0 (${device}) ${browser}`,
-      success,
-      riskLevel: risk.level,
-      riskScore: risk.score,
-      anomalyReasons: risk.reasons,
-      sessionId: success ? `session_${Math.random().toString(36).substring(7)}` : undefined,
-      isNewDevice,
-      isNewLocation,
-      vpnDetected,
-      tor,
-      failedAttempts,
-    })
-  }
-
-  return attempts.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-}
-
-function generateSecurityAlerts(loginAttempts: LoginAttempt[]): SecurityAlert[] {
-  const alerts: SecurityAlert[] = []
-  let alertId = 1
-
-  const highRiskAttempts = loginAttempts.filter(
-    (attempt) => attempt.riskLevel === "High" || attempt.riskLevel === "Critical",
-  )
-
-  highRiskAttempts.slice(0, 20).forEach((attempt) => {
-    const alertTypes = [
-      {
-        type: "anomaly" as const,
-        title: "Anomalous Login Detected",
-        description: `Suspicious login attempt from ${attempt.country} using ${attempt.device}`,
-      },
-      {
-        type: "suspicious" as const,
-        title: "Suspicious Activity",
-        description: `Multiple risk factors detected: ${attempt.anomalyReasons.join(", ")}`,
-      },
-    ]
-
-    const alertType = alertTypes[Math.floor(Math.random() * alertTypes.length)]
-
-    alerts.push({
-      id: `alert_${alertId++}`,
-      timestamp: attempt.timestamp,
-      type: alertType.type,
-      severity: attempt.riskLevel,
-      title: alertType.title,
-      description: alertType.description,
-      userId: attempt.userId,
-      username: attempt.username,
-      ipAddress: attempt.ipAddress,
-      country: attempt.country,
-      status: Math.random() > 0.7 ? "investigating" : "new",
-    })
-  })
-
-  for (let i = 0; i < 5; i++) {
-    alerts.push({
-      id: `alert_${alertId++}`,
-      timestamp: new Date(Date.now() - Math.random() * 12 * 60 * 60 * 1000),
-      type: "policy_violation",
-      severity: "Medium",
-      title: "Password Policy Violation",
-      description: "User attempted to use previously compromised password",
-      username: usernames[Math.floor(Math.random() * usernames.length)],
-      status: "new",
-    })
-  }
-
-  return alerts.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-}
-
-function calculateDashboardMetrics(loginAttempts: LoginAttempt[]): DashboardMetrics {
-  const now = new Date()
-  const last24h = loginAttempts.filter((attempt) => now.getTime() - attempt.timestamp.getTime() < 24 * 60 * 60 * 1000)
-
-  const totalLogins24h = last24h.length
-  const anomalousLogins24h = last24h.filter(
-    (attempt) => attempt.riskLevel === "High" || attempt.riskLevel === "Critical",
-  ).length
-
-  const activeUsers = new Set(last24h.filter((attempt) => attempt.success).map((attempt) => attempt.userId)).size
-  const newDevices24h = last24h.filter((attempt) => attempt.isNewDevice).length
-  const criticalAlerts = last24h.filter((attempt) => attempt.riskLevel === "Critical").length
-  const avgRiskScore = last24h.reduce((sum, attempt) => sum + attempt.riskScore, 0) / last24h.length || 0
-
-  // Top risk countries
-  const countryRisks = new Map<string, { count: number; totalRisk: number }>()
-  last24h.forEach((attempt) => {
-    const existing = countryRisks.get(attempt.country) || { count: 0, totalRisk: 0 }
-    countryRisks.set(attempt.country, {
-      count: existing.count + 1,
-      totalRisk: existing.totalRisk + attempt.riskScore,
-    })
-  })
-
-  const topRiskCountries = Array.from(countryRisks.entries())
-    .map(([country, data]) => ({
-      country,
-      count: data.count,
-      riskScore: Math.round(data.totalRisk / data.count),
-    }))
-    .sort((a, b) => b.riskScore - a.riskScore)
-    .slice(0, 5)
-
-  // Login trends (hourly for last 24h)
-  const loginTrends = []
-  for (let i = 23; i >= 0; i--) {
-    const hourStart = new Date(now.getTime() - i * 60 * 60 * 1000)
-    const hourEnd = new Date(hourStart.getTime() + 60 * 60 * 1000)
-
-    const hourAttempts = loginAttempts.filter(
-      (attempt) => attempt.timestamp >= hourStart && attempt.timestamp < hourEnd,
-    )
-
-    loginTrends.push({
-      time: hourStart.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      successful: hourAttempts.filter((a) => a.success).length,
-      failed: hourAttempts.filter((a) => !a.success).length,
-      anomalous: hourAttempts.filter((a) => a.riskLevel === "High" || a.riskLevel === "Critical").length,
-    })
-  }
-
-  // Risk distribution
-  const riskCounts = {
-    Low: last24h.filter((a) => a.riskLevel === "Low").length,
-    Medium: last24h.filter((a) => a.riskLevel === "Medium").length,
-    High: last24h.filter((a) => a.riskLevel === "High").length,
-    Critical: last24h.filter((a) => a.riskLevel === "Critical").length,
-  }
-
-  const riskDistribution = Object.entries(riskCounts).map(([level, count]) => ({
-    level,
-    count,
-    percentage: Math.round((count / totalLogins24h) * 100) || 0,
-  }))
-
-  return {
-    totalLogins24h,
-    anomalousLogins24h,
-    activeUsers,
-    newDevices24h,
-    criticalAlerts,
-    avgRiskScore: Math.round(avgRiskScore),
-    topRiskCountries,
-    loginTrends,
-    riskDistribution,
-  }
-}
-
 export function SOCAnalystDashboard() {
   const [loginAttempts, setLoginAttempts] = useState<LoginAttempt[]>([])
   const [securityAlerts, setSecurityAlerts] = useState<SecurityAlert[]>([])
@@ -359,11 +89,12 @@ export function SOCAnalystDashboard() {
   const [severityFilter, setSeverityFilter] = useState<string>("all")
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
 
-  // Initialize data
+  // Initialize data and refetch when date changes
   useEffect(() => {
     loadData()
-  }, [])
+  }, [selectedDate])
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
@@ -376,20 +107,50 @@ export function SOCAnalystDashboard() {
     return () => clearInterval(interval)
   }, [autoRefresh])
 
-  const loadData = () => {
+  const loadData = async () => {
     setLoading(true)
-    // Simulate API delay
-    setTimeout(() => {
-      const attempts = generateMockLoginAttempts(1000)
-      const alerts = generateSecurityAlerts(attempts)
-      const dashboardMetrics = calculateDashboardMetrics(attempts)
+    const dateString = format(selectedDate, "yyyy-MM-dd")
+    try {
+      const [metricsRes, alertsRes, attemptsRes] = await Promise.all([
+        fetch(`/api/soc/metrics?date=${dateString}`),
+        fetch(`/api/soc/alerts?date=${dateString}`),
+        fetch(`/api/soc/login-attempts?date=${dateString}`),
+      ])
 
-      setLoginAttempts(attempts)
-      setSecurityAlerts(alerts)
-      setMetrics(dashboardMetrics)
+      if (!metricsRes.ok || !alertsRes.ok || !attemptsRes.ok) {
+        throw new Error("Failed to fetch SOC data")
+      }
+
+      const metricsData = await metricsRes.json()
+      const alertsData = await alertsRes.json()
+      const attemptsData = await attemptsRes.json()
+
+      const parsedAlerts = alertsData.map((alert: SecurityAlert) => ({
+        ...alert,
+        timestamp: new Date(alert.timestamp),
+      }))
+      const parsedAttempts = attemptsData.map((attempt: LoginAttempt) => ({
+        ...attempt,
+        timestamp: new Date(attempt.timestamp),
+      }))
+
+      const liveMetrics: DashboardMetrics = {
+        ...metricsData,
+        topRiskCountries: metricsData.topRiskCountries || [],
+        loginTrends: metricsData.loginTrends || [],
+        riskDistribution: metricsData.riskDistribution || [],
+      };
+
+      setMetrics(liveMetrics)
+      setSecurityAlerts(parsedAlerts)
+      setLoginAttempts(parsedAttempts)
       setLastUpdated(new Date())
+    } catch (error) {
+      console.error("Error loading SOC data:", error)
+      setMetrics(null)
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
 
   const handleAlertAction = (alertId: string, action: string) => {
@@ -494,7 +255,7 @@ export function SOCAnalystDashboard() {
         <div>
           <h1 className="text-3xl font-bold text-white">SOC Analyst Dashboard</h1>
           <p className="text-slate-400">
-            Real-time security monitoring and threat analysis • Last updated: {lastUpdated.toLocaleTimeString()}
+            Security overview for {format(selectedDate, "PPP")} • Last updated: {lastUpdated.toLocaleTimeString()}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -516,6 +277,27 @@ export function SOCAnalystDashboard() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-slate-600 text-slate-300 bg-transparent"
+              >
+                <CalendarIcon className="w-4 h-4 mr-2" />
+                {format(selectedDate, "PPP")}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-600" align="end">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(day) => day && setSelectedDate(day)}
+                initialFocus
+                disabled={(date) => date > new Date()}
+              />
+            </PopoverContent>
+          </Popover>
           <Button variant="outline" size="sm" className="border-slate-600 text-slate-300 bg-transparent">
             <Download className="w-4 h-4 mr-2" />
             Export

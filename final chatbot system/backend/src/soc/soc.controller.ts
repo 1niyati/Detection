@@ -19,4 +19,9 @@ export class SocController {
   getLoginAttempts(@Query('date') date?: string) {
     return this.socService.getLoginAttempts(date);
   }
+
+  @Get('suspicious-summary')
+  getSuspiciousSummary(@Query('timeWindow') timeWindow?: string) {
+    return this.socService.getSuspiciousSummary(timeWindow);
+  }
 }

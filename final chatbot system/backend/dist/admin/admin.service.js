@@ -80,7 +80,7 @@ let AdminService = class AdminService {
         const highRiskEvents = recentActivities.filter(a => a.severity === 'High' || a.severity === 'Critical').length;
         const activeSessions = new Set(recentActivities.filter(a => a.loginSuccessful).map(a => a.userId)).size;
         const alertsPending = await this.loginActivityRepository.count({
-            where: { isAnomaly: true, status: 'new', timestamp: (0, typeorm_2.Between)(startDate, endDate) }
+            where: { isAnomaly: true, timestamp: (0, typeorm_2.Between)(startDate, endDate) }
         });
         return {
             loginAttempts24h: recentActivities.length,

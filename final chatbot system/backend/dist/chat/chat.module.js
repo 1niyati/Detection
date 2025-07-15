@@ -14,6 +14,7 @@ const chat_service_1 = require("./chat.service");
 const chat_session_entity_1 = require("./entities/chat-session.entity");
 const chat_message_entity_1 = require("./entities/chat-message.entity");
 const auth_module_1 = require("../auth/auth.module");
+const soc_module_1 = require("../soc/soc.module");
 let ChatModule = class ChatModule {
 };
 ChatModule = __decorate([
@@ -21,6 +22,7 @@ ChatModule = __decorate([
         imports: [
             typeorm_1.TypeOrmModule.forFeature([chat_session_entity_1.ChatSession, chat_message_entity_1.ChatMessage]),
             auth_module_1.AuthModule,
+            soc_module_1.SocModule,
         ],
         controllers: [chat_controller_1.ChatController],
         providers: [chat_service_1.ChatService],

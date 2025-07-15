@@ -46,7 +46,7 @@ export class AdminService {
     ).size;
 
     const alertsPending = await this.loginActivityRepository.count({
-        where: { isAnomaly: true, status: 'new', timestamp: Between(startDate, endDate) }
+        where: { isAnomaly: true, timestamp: Between(startDate, endDate) }
     });
 
     return {

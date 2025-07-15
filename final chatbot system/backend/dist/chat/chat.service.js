@@ -46,6 +46,7 @@ const axios_1 = __importDefault(require("axios"));
 const dotenv = __importStar(require("dotenv"));
 const chat_session_entity_1 = require("./entities/chat-session.entity");
 const chat_message_entity_1 = require("./entities/chat-message.entity");
+const soc_service_1 = require("../soc/soc.service"); // Import SocService
 dotenv.config();
 const GENERAL_PROMPT = `You are a friendly and helpful AI assistant. Engage in natural conversation while being helpful and concise. For greetings like "hello" or "hi", respond naturally as a friendly assistant would. Keep responses conversational yet professional.
 
@@ -91,9 +92,10 @@ const SECURITY_KEYWORDS = [
     'suspicious', 'compromise', 'unauthorized', 'detection', 'logins', 'anomaly', 'attempt', 'failed'
 ];
 let ChatService = class ChatService {
-    constructor(sessionRepository, messageRepository) {
+    constructor(sessionRepository, messageRepository, socService) {
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
+        this.socService = socService;
         this.geminiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent';
     }
     getSpecificRecommendation(reason) {
@@ -224,57 +226,39 @@ let ChatService = class ChatService {
                 // id, createdAt etc. are not needed for the API call
             });
         }
-        // Handle special alert query using only the new message
-        if (newMessageContent.toLowerCase().includes('suspicious') || newMessageContent.toLowerCase().includes('anomaly') || newMessageContent.toLowerCase().includes('alert')) {
-            try {
-                console.log('Fetching suspicious login alerts...');
-                const alertResponse = await axios_1.default.get('http://localhost:8000/auth/alerts/suspicious-logins');
-                const alerts = alertResponse.data;
-                let report;
-                if (alerts && alerts.length > 0) {
-                    report = `## Suspicious Login Report\n\nI have detected ${alerts.length} suspicious login attempt(s). Here are the details:\n\n`;
-                    alerts.forEach((alert, index) => {
-                        const recommendation = this.getSpecificRecommendation(alert.reason);
-                        report += `### Alert ${index + 1}\n`;
-                        report += `- **User Email:** ${alert.email}\n`;
-                        report += `- **Time:** ${new Date(alert.timestamp).toLocaleString()}\n`;
-                        report += `- **Risk Level:** ${alert.risk_level}\n`;
-                        report += `- **Reason:** ${alert.reason}\n`;
-                        report += `- **Recommendation:** ${recommendation}\n\n`;
-                    });
-                }
-                else {
-                    report = "I have not detected any suspicious login activity at this time.";
-                }
-                const assistantMessage = this.messageRepository.create({ role: 'assistant', content: report, sessionId: session.id });
-                await this.messageRepository.save(assistantMessage);
-                return { assistantMessage, sessionId: session.id };
-            }
-            catch (error) {
-                console.error('Error fetching login alerts:', error);
-                const errorResponse = "I was unable to retrieve the latest security alerts from the detection system. Please check if the system is running.";
-                const assistantMessage = this.messageRepository.create({ role: 'assistant', content: errorResponse, sessionId: session.id });
-                await this.messageRepository.save(assistantMessage);
-                return { assistantMessage, sessionId: session.id };
-            }
+        // --- This is the new, corrected logic ---
+        const securityKeywords = ["suspicious", "anomaly", "alert", "threat", "report"];
+        const isSecurityQuery = securityKeywords.some(keyword => newMessageContent.toLowerCase().includes(keyword));
+        const isRecentQuery = newMessageContent.toLowerCase().includes('recent');
+        if (isSecurityQuery) {
+            // Use the injected service to get the summary
+            const summary = await this.socService.getSuspiciousSummary(isRecentQuery ? 'recent' : '24-hour');
+            const report = summary.summary.trim();
+            const assistantMessage = this.messageRepository.create({
+                role: 'assistant',
+                content: report,
+                sessionId: session.id
+            });
+            await this.messageRepository.save(assistantMessage);
+            return { assistantMessage, sessionId: session.id };
         }
-        // --- Standard Gemini call ---
-        const isSecurityQuery = this.isSecurityRelatedQuery(newMessageContent);
-        const systemPrompt = isSecurityQuery ? SECURITY_PROMPT : GENERAL_PROMPT;
+        // --- End of new logic ---
+        // Prepare history for Gemini API
+        const historyForApi = messageHistory.map(msg => ({
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: msg.content }]
+        }));
         const conversationContext = {
             contents: [
                 {
                     role: 'user',
-                    parts: [{ text: systemPrompt }]
+                    parts: [{ text: GENERAL_PROMPT }]
                 },
                 {
                     role: 'model',
                     parts: [{ text: 'Understood, I will proceed with the conversation as configured.' }]
                 },
-                ...messageHistory.map((msg) => ({
-                    role: msg.role === 'assistant' ? 'model' : 'user',
-                    parts: [{ text: msg.content }]
-                }))
+                ...historyForApi
             ]
         };
         try {
@@ -310,6 +294,7 @@ ChatService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(chat_session_entity_1.ChatSession)),
     __param(1, (0, typeorm_1.InjectRepository)(chat_message_entity_1.ChatMessage)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        typeorm_2.Repository])
+        typeorm_2.Repository,
+        soc_service_1.SocService])
 ], ChatService);
 exports.ChatService = ChatService;

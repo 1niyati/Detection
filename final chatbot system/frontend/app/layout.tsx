@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { NavigationMenu } from "@/components/ui/navigation-menu"
 import { Inter } from 'next/font/google'
-import { AnalystSidebarLink } from "@/components/analyst-sidebar-link"
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -21,7 +20,6 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={inter.className}>
         <NavigationMenu />
-        <AnalystSidebarLink />
         {children}
       </body>
     </html>

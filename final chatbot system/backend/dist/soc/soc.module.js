@@ -9,17 +9,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SocModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
-const soc_controller_1 = require("./soc.controller");
 const soc_service_1 = require("./soc.service");
+const soc_controller_1 = require("./soc.controller");
 const login_activity_entity_1 = require("./entities/login-activity.entity");
 const soc_user_entity_1 = require("./entities/soc-user.entity");
 let SocModule = class SocModule {
 };
 SocModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([login_activity_entity_1.LoginActivity, soc_user_entity_1.SocUser], 'applicationConnection')],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([login_activity_entity_1.LoginActivity, soc_user_entity_1.SocUser], 'applicationConnection'),
+        ],
         controllers: [soc_controller_1.SocController],
         providers: [soc_service_1.SocService],
+        exports: [soc_service_1.SocService], // Make the service available to other modules
     })
 ], SocModule);
 exports.SocModule = SocModule;

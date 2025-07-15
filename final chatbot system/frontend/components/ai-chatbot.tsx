@@ -137,15 +137,16 @@ export function AIChatbot() {
     const token = getToken();
     if (!token) return;
 
+    const userMessageContent = input.trim();
+    setInput("");
+    
     // Optimistically add the user's message to the UI
     const optimisticMessage: Message = { 
       role: 'user', 
-      content: input.trim() 
+      content: userMessageContent 
     };
     setMessages(prevMessages => [...prevMessages, optimisticMessage]);
     
-    const currentInput = input;
-    setInput("");
     setIsLoading(true);
 
     // If we are editing, call the update endpoint
@@ -154,7 +155,7 @@ export function AIChatbot() {
         const res = await fetch(`${API_URL}/chat/messages/${editingMessage.id}`, {
           method: 'PATCH',
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ content: currentInput.trim() }),
+          body: JSON.stringify({ content: userMessageContent }),
         });
         if (!res.ok) throw new Error("Failed to update message");
         
@@ -166,7 +167,7 @@ export function AIChatbot() {
       } catch (err) {
         console.error("Error updating message", err);
         toast({ title: "Error", description: "Failed to update message.", variant: "destructive" });
-        setInput(currentInput); // Restore input on failure
+        setInput(userMessageContent); // Restore input on failure
         setMessages(prev => prev.filter(m => m !== optimisticMessage)); // Remove optimistic message on failure
       } finally {
         setIsLoading(false);
@@ -178,7 +179,7 @@ export function AIChatbot() {
     try {
       const payload = {
         sessionId: currentSessionId,
-        message: currentInput.trim(),
+        message: userMessageContent,
       };
       
       const res = await fetch(`${API_URL}/chat`, {
@@ -202,7 +203,7 @@ export function AIChatbot() {
     } catch (err) {
       console.error("Error sending message", err);
       toast({ title: "Error", description: "Failed to send message.", variant: "destructive" });
-      setInput(currentInput); // Restore input on failure
+      setInput(userMessageContent); // Restore input on failure
       setMessages(prev => prev.filter(m => m !== optimisticMessage)); // Remove optimistic message on failure
     } finally {
       setIsLoading(false);

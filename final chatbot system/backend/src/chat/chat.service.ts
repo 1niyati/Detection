@@ -5,6 +5,7 @@ import axios from 'axios';
 import * as dotenv from 'dotenv';
 import { ChatSession } from './entities/chat-session.entity';
 import { ChatMessage } from './entities/chat-message.entity';
+import { SocService } from '../soc/soc.service'; // Import SocService
 
 dotenv.config();
 
@@ -68,6 +69,7 @@ export class ChatService {
     private readonly sessionRepository: Repository<ChatSession>,
     @InjectRepository(ChatMessage)
     private readonly messageRepository: Repository<ChatMessage>,
+    private readonly socService: SocService, // Inject SocService
   ) {}
 
   private getSpecificRecommendation(reason: string): string {
@@ -222,60 +224,45 @@ export class ChatService {
       } as ChatMessage);
     }
     
-    // Handle special alert query using only the new message
-    if (newMessageContent.toLowerCase().includes('suspicious') || newMessageContent.toLowerCase().includes('anomaly') || newMessageContent.toLowerCase().includes('alert')) {
-      try {
-        console.log('Fetching suspicious login alerts...');
-        const alertResponse = await axios.get('http://localhost:8000/auth/alerts/suspicious-logins');
-        const alerts = alertResponse.data;
+    // --- This is the new, corrected logic ---
+    const securityKeywords = ["suspicious", "anomaly", "alert", "threat", "report"];
+    const isSecurityQuery = securityKeywords.some(keyword => newMessageContent.toLowerCase().includes(keyword));
+    const isRecentQuery = newMessageContent.toLowerCase().includes('recent');
 
-        let report: string;
-        if (alerts && alerts.length > 0) {
-          report = `## Suspicious Login Report\n\nI have detected ${alerts.length} suspicious login attempt(s). Here are the details:\n\n`;
-          alerts.forEach((alert: any, index: number) => {
-            const recommendation = this.getSpecificRecommendation(alert.reason);
-            report += `### Alert ${index + 1}\n`;
-            report += `- **User Email:** ${alert.email}\n`;
-            report += `- **Time:** ${new Date(alert.timestamp).toLocaleString()}\n`;
-            report += `- **Risk Level:** ${alert.risk_level}\n`;
-            report += `- **Reason:** ${alert.reason}\n`;
-            report += `- **Recommendation:** ${recommendation}\n\n`;
-          });
-        } else {
-          report = "I have not detected any suspicious login activity at this time.";
-        }
-        
-        const assistantMessage = this.messageRepository.create({ role: 'assistant', content: report, sessionId: session.id });
+    if (isSecurityQuery) {
+        // Use the injected service to get the summary
+        const summary = await this.socService.getSuspiciousSummary(isRecentQuery ? 'recent' : '24-hour');
+      
+        const report = summary.summary.trim();
+
+        const assistantMessage = this.messageRepository.create({ 
+          role: 'assistant', 
+          content: report, 
+          sessionId: session.id 
+        });
+
         await this.messageRepository.save(assistantMessage);
         return { assistantMessage, sessionId: session.id };
-
-      } catch (error) {
-        console.error('Error fetching login alerts:', error);
-        const errorResponse = "I was unable to retrieve the latest security alerts from the detection system. Please check if the system is running.";
-        const assistantMessage = this.messageRepository.create({ role: 'assistant', content: errorResponse, sessionId: session.id });
-        await this.messageRepository.save(assistantMessage);
-        return { assistantMessage, sessionId: session.id };
-      }
     }
+    // --- End of new logic ---
 
-    // --- Standard Gemini call ---
-    const isSecurityQuery = this.isSecurityRelatedQuery(newMessageContent);
-    const systemPrompt = isSecurityQuery ? SECURITY_PROMPT : GENERAL_PROMPT;
+    // Prepare history for Gemini API
+    const historyForApi = messageHistory.map(msg => ({
+          role: msg.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: msg.content }]
+        }));
 
     const conversationContext = {
       contents: [
         {
           role: 'user',
-          parts: [{ text: systemPrompt }]
+          parts: [{ text: GENERAL_PROMPT }]
         },
         {
           role: 'model',
           parts: [{ text: 'Understood, I will proceed with the conversation as configured.' }]
         },
-        ...messageHistory.map((msg) => ({ // Use the constructed message history
-          role: msg.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: msg.content }]
-        }))
+        ...historyForApi
       ]
     };
 

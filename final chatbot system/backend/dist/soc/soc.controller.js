@@ -28,6 +28,9 @@ let SocController = class SocController {
     getLoginAttempts(date) {
         return this.socService.getLoginAttempts(date);
     }
+    getSuspiciousSummary(timeWindow) {
+        return this.socService.getSuspiciousSummary(timeWindow);
+    }
 };
 __decorate([
     (0, common_1.Get)('metrics'),
@@ -50,6 +53,13 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], SocController.prototype, "getLoginAttempts", null);
+__decorate([
+    (0, common_1.Get)('suspicious-summary'),
+    __param(0, (0, common_1.Query)('timeWindow')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], SocController.prototype, "getSuspiciousSummary", null);
 SocController = __decorate([
     (0, common_1.Controller)('soc'),
     __metadata("design:paramtypes", [soc_service_1.SocService])

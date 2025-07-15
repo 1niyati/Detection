@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Shield, BarChart3, MessageSquare, User, Menu, ShieldCheck } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import SocAnalystDashboard from "./soc/page"
+import { SOCAnalystDashboard } from "@/components/soc-analyst-dashboard"
 import {
   getUserSession,
   saveUserSession,
@@ -223,7 +223,7 @@ export default function SentinelSOC() {
 
           {canAccessSocDashboard(user) && (
             <TabsContent value="soc" className="mt-0 flex-1">
-              <SocAnalystDashboard />
+              <SOCAnalystDashboard />
             </TabsContent>
           )}
 

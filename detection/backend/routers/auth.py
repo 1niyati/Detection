@@ -226,7 +226,7 @@ def login(user_login: UserLogin, request: Request, db: Session = Depends(get_db)
                 else:
                     risk_level = "Low"
                 
-                anomaly_detected = (risk_level == "High" or risk_level == "Medium")
+                anomaly_detected = risk_level in ["High", "Medium", "Critical"]
                 details["anomaly_score"] = model_score
                 
                 # --- Detailed Reason Finding ---
@@ -242,34 +242,41 @@ def login(user_login: UserLogin, request: Request, db: Session = Depends(get_db)
                     elif model_is_anomaly:
                         details["anomaly_reason"] = f"Suspicious login flagged by ML model (Score: {model_score:.4f})"
                 else:
-                    details["anomaly_reason"] = "Normal login based on ML model"
+                    details["anomaly_reason"] = "Normal login (model score below threshold)"
+    
+                # --- Console Log ---
+                print("\n--- FEATURES FOR MODEL PREDICTION ---")
+                print(features_df.to_string())
+                print("-------------------------------------\n")
+                print("--- ANOMALY DETECTION LOG ---")
+                print(f"User: {user.email}")
+                print(f"Is Anomaly: {anomaly_detected}")
+                print(f"Anomaly Score: {details['anomaly_score']:.4f}")
+                print(f"Anomaly Reason: {details['anomaly_reason']}")
+                print("-----------------------------\n")
+        else:
+            details["anomaly_reason"] = "Normal login (model not loaded)"
+            risk_level = "Low" # Ensure it's low when model isn't there
 
-            # --- Console Log ---
-            print("\n--- FEATURES FOR MODEL PREDICTION ---")
-            print(features_df.to_string())
-            print("-------------------------------------\n")
-            print("--- ANOMALY DETECTION LOG ---")
-            print(f"User: {user.email}")
-            print(f"Is Anomaly: {anomaly_detected}")
-            print(f"Anomaly Score: {details['anomaly_score']:.4f}")
-            print(f"Anomaly Reason: {details['anomaly_reason']}")
-            print("-----------------------------\n")
-
-        # If an anomaly is detected, the login is not considered successful from a security standpoint.
-        final_login_successful = not anomaly_detected
+        # Anomaly detection determines if the login is "successful" from a security perspective
+        final_login_successful = risk_level in ["Low", "Normal (First Login)"]
         details["status"] = "success" if final_login_successful else "failed"
 
         # Record login activity
         create_login_activity(db, user.id, user.email, ip_address, user_agent_str, final_login_successful, anomaly_detected, risk_level, details)
 
-        return {
-            "message": "Login successful",
-            "user_id": user.id,
+        # This should be returned regardless of outcome
+        response_data = {
+        "message": "Login successful",
+        "user_id": user.id,
             "anomaly_detected": anomaly_detected,
             "risk_level": risk_level,
             "anomaly_details": {"score": details["anomaly_score"], "message": details["anomaly_reason"]}
         }
-
+    
     except Exception as e:
         print(f"An unexpected error occurred during login: {e}")
-        return JSONResponse(status_code=500, content={"message": "An internal server error occurred."}) 
+        # Return a standard error response
+        return JSONResponse(status_code=500, content={"message": "An internal server error occurred."})
+
+    return response_data 
