@@ -2,7 +2,7 @@
   "name": "chat-backend",
   "version": "1.0.0",
   "main": "dist/main.js",
-  "scripts": {
+"scripts": {
   "start": "nest start",
   "start:prod": "node dist/main.js",
   "build": "nest build"
