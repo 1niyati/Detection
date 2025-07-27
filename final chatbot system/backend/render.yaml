@@ -1,13 +1,15 @@
-# render.yaml
 services:
   - type: web
     name: chatbot-backend
     env: node
     plan: free
     buildCommand: |
-      cd backend && npm install && npm run build
+      cd backend
+      npm install
+      npm run build
     startCommand: |
-      cd backend && npm run start:prod
+      cd backend
+      npm run start:prod
     envVars:
       - key: NODE_ENV
         value: production
@@ -20,11 +22,3 @@ services:
           name: chatbot-db
           property: connectionString
     healthCheckPath: /health
-
-databases:
-  - name: chatbot-db
-    databaseName: chatbot_db
-    user: admin
-    plan: free
-    ipAllowList:
-      - group: backend
