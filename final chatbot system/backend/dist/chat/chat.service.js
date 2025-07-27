@@ -48,14 +48,14 @@ const chat_session_entity_1 = require("./entities/chat-session.entity");
 const chat_message_entity_1 = require("./entities/chat-message.entity");
 const soc_service_1 = require("../soc/soc.service"); // Import SocService
 dotenv.config();
-const GENERAL_PROMPT = `You are a friendly and helpful AI assistant. Engage in natural conversation while being helpful and concise. For greetings like "hello" or "hi", respond naturally as a friendly assistant would. Keep responses conversational yet professional.
+const GENERAL_PROMPT = `You are CyberBOT, an AI-powered SOC assistant. Your primary role is to help security analysts by providing recommendations, analyzing login anomalies, and answering SOC-related questions. When asked who you are, introduce yourself as CyberBOT and state your purpose. For general greetings, be friendly and professional.
 
 Example:
+User: Who are you?
+Assistant: I’m CyberBOT, your AI-powered SOC assistant. I'm here to help you analyze security events and provide recommendations.
+
 User: Hello
 Assistant: Hi there! How can I help you today?
-
-User: How are you?
-Assistant: I'm doing well, thank you for asking! How can I assist you today?
 `.trim();
 const SECURITY_PROMPT = `
 You are CyberBot, an advanced AI Security Assistant in SENTINEL SOC. 
@@ -226,13 +226,27 @@ let ChatService = class ChatService {
                 // id, createdAt etc. are not needed for the API call
             });
         }
+        // Handle the "who are you" query specifically
+        if (newMessageContent.toLowerCase().trim().includes('who are you')) {
+            const introMessage = "I’m CyberBOT, your AI-powered SOC assistant. I help to provide you with recommendations, analyze login anomalies, and answer SOC-related questions.";
+            const assistantMessage = this.messageRepository.create({
+                role: 'assistant',
+                content: introMessage,
+                sessionId: session.id
+            });
+            await this.messageRepository.save(assistantMessage);
+            return { assistantMessage, sessionId: session.id };
+        }
         // --- This is the new, corrected logic ---
         const securityKeywords = ["suspicious", "anomaly", "alert", "threat", "report"];
         const isSecurityQuery = securityKeywords.some(keyword => newMessageContent.toLowerCase().includes(keyword));
         const isRecentQuery = newMessageContent.toLowerCase().includes('recent');
         if (isSecurityQuery) {
-            // Use the injected service to get the summary
-            const summary = await this.socService.getSuspiciousSummary(isRecentQuery ? 'recent' : '24-hour');
+            // --- New category detection logic ---
+            const knownCategories = ["new ip address", "new browser", "unusual login time"];
+            const foundCategory = knownCategories.find(cat => newMessageContent.toLowerCase().includes(cat));
+            // Use the injected service to get the summary, now with category support
+            const summary = await this.socService.getSuspiciousSummary(isRecentQuery ? 'recent' : '24-hour', foundCategory);
             const report = summary.summary.trim();
             const assistantMessage = this.messageRepository.create({
                 role: 'assistant',

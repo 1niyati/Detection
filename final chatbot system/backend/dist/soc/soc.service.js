@@ -230,17 +230,22 @@ let SocService = class SocService {
             };
         });
     }
-    async getSuspiciousSummary(timeWindow) {
+    async getSuspiciousSummary(timeWindow, category) {
         const isRecent = timeWindow === 'recent';
         const timeAgo = isRecent
             ? new Date(Date.now() - 5 * 60 * 1000) // 5 minutes
             : new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours
         const timeText = isRecent ? "last 5 minutes" : "last 24 hours";
+        const categoryText = category ? ` related to '${category}'` : '';
+        const whereOptions = {
+            timestamp: (0, typeorm_2.MoreThan)(timeAgo),
+            severity: (0, typeorm_2.In)(['High', 'Critical']),
+        };
+        if (category) {
+            whereOptions.anomalyReason = (0, typeorm_2.ILike)(`%${category}%`);
+        }
         const suspiciousActivities = await this.loginActivityRepository.find({
-            where: [
-                { severity: 'High', timestamp: (0, typeorm_2.MoreThan)(timeAgo) },
-                { severity: 'Critical', timestamp: (0, typeorm_2.MoreThan)(timeAgo) },
-            ],
+            where: whereOptions,
             relations: ['user'],
             order: {
                 timestamp: 'DESC',
@@ -250,13 +255,13 @@ let SocService = class SocService {
         const actionableAlerts = suspiciousActivities.filter(activity => activity.anomalyReason && activity.anomalyReason.toLowerCase().startsWith('suspicious login flagged'));
         if (actionableAlerts.length === 0) {
             return {
-                summary: `### Suspicious Login Report\n\nNo actionable suspicious login attempts detected in the ${timeText}. The system appears secure.`
+                summary: `No actionable suspicious login attempts${categoryText} detected in the ${timeText}. The system appears secure.`
             };
         }
         // New, more professional summary generation based on actionable alerts
         const alertCount = actionableAlerts.length;
         const timeFrameText = isRecent ? "in the last 5 minutes" : "in the last 24 hours";
-        let summary = `### Suspicious Login Report\n\n**${alertCount}** actionable alert(s) detected ${timeFrameText}. Details:\n\n`;
+        let summary = `### Suspicious Login Report\n\n**${alertCount}** actionable alert(s)${categoryText} detected ${timeFrameText}. Details:\n\n`;
         actionableAlerts.forEach((activity, index) => {
             const recommendation = this.getSpecificRecommendation(activity.anomalyReason);
             summary += `\n\n---\n\n`;

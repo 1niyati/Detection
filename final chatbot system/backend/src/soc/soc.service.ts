@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan, Between, In, LessThan } from 'typeorm';
+import { Repository, MoreThan, Between, In, LessThan, ILike } from 'typeorm';
 import { LoginActivity } from './entities/login-activity.entity';
 
 // Interfaces adapted from frontend for data structures
@@ -293,19 +293,26 @@ export class SocService {
     });
   }
 
-  async getSuspiciousSummary(timeWindow?: string): Promise<{ summary: string }> {
+  async getSuspiciousSummary(timeWindow?: string, category?: string): Promise<{ summary: string }> {
     const isRecent = timeWindow === 'recent';
     const timeAgo = isRecent
       ? new Date(Date.now() - 5 * 60 * 1000) // 5 minutes
       : new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours
-    
+
     const timeText = isRecent ? "last 5 minutes" : "last 24 hours";
+    const categoryText = category ? ` related to '${category}'` : '';
+
+    const whereOptions: any = {
+      timestamp: MoreThan(timeAgo),
+      severity: In(['High', 'Critical']),
+    };
+
+    if (category) {
+      whereOptions.anomalyReason = ILike(`%${category}%`);
+    }
 
     const suspiciousActivities = await this.loginActivityRepository.find({
-      where: [
-        { severity: 'High', timestamp: MoreThan(timeAgo) },
-        { severity: 'Critical', timestamp: MoreThan(timeAgo) },
-      ],
+      where: whereOptions,
       relations: ['user'],
       order: {
         timestamp: 'DESC',
@@ -319,14 +326,14 @@ export class SocService {
 
     if (actionableAlerts.length === 0) {
       return {
-        summary: `### Suspicious Login Report\n\nNo actionable suspicious login attempts detected in the ${timeText}. The system appears secure.`
+        summary: `No actionable suspicious login attempts${categoryText} detected in the ${timeText}. The system appears secure.`
       };
     }
 
     // New, more professional summary generation based on actionable alerts
     const alertCount = actionableAlerts.length;
     const timeFrameText = isRecent ? "in the last 5 minutes" : "in the last 24 hours";
-    let summary = `### Suspicious Login Report\n\n**${alertCount}** actionable alert(s) detected ${timeFrameText}. Details:\n\n`;
+    let summary = `### Suspicious Login Report\n\n**${alertCount}** actionable alert(s)${categoryText} detected ${timeFrameText}. Details:\n\n`;
 
     actionableAlerts.forEach((activity, index) => {
       const recommendation = this.getSpecificRecommendation(activity.anomalyReason);

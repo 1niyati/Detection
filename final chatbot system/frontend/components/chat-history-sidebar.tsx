@@ -52,11 +52,14 @@ export function ChatHistorySidebar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 text-slate-400 hover:text-red-400"
+                className="h-7 w-7 text-slate-400 hover:bg-red-500/20 hover:text-red-400 transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDeleteSession(session.id);
+                  if (confirm('Are you sure you want to delete this chat session? This action cannot be undone.')) {
+                    onDeleteSession(session.id);
+                  }
                 }}
+                title="Delete chat session"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>

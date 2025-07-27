@@ -220,23 +220,34 @@ export function AIChatbot() {
     const token = getToken();
     if (!token) return;
 
-    try {
-        await fetch(`${API_URL}/chat/sessions/${sessionId}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        toast({ title: "Success", description: "Chat session deleted." });
-        
-        // Refetch sessions and reset view
-        fetchSessions();
-        if (currentSessionId === sessionId) {
-            setCurrentSessionId(null);
-        }
-    } catch (err) {
-        console.error("Failed to delete session", err);
-        toast({ title: "Error", description: "Could not delete session.", variant: "destructive"});
+    const originalSessions = sessions;
+
+    // Optimistic update
+    setSessions(prevSessions => prevSessions.filter(session => session.id !== sessionId));
+    if (currentSessionId === sessionId) {
+      setCurrentSessionId(null);
+      setMessages([]);
     }
-  }
+
+    try {
+      const res = await fetch(`${API_URL}/chat/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error('Failed to delete session on server');
+
+      toast({ title: "Success", description: "Chat session deleted." });
+      // Optional: refetch to ensure consistency, though optimistic update handles the UI
+      fetchSessions(); 
+
+    } catch (err) {
+      console.error("Failed to delete session", err);
+      toast({ title: "Error", description: "Could not delete session.", variant: "destructive" });
+      // Rollback on error
+      setSessions(originalSessions);
+    }
+  };
   
   const handleCopyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);

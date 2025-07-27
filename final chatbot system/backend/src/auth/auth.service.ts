@@ -119,7 +119,7 @@ export class AuthService {
     email: string;
     password: string;
     role: string;
-    department: string;
+    department?: string;
   }) {
     console.log('\nSignup attempt:', { email, role, department });
 
@@ -142,7 +142,7 @@ export class AuthService {
       email,
       password: hashedPassword,
       role: role as 'analyst' | 'viewer',
-      department,
+      department: department || 'General', // Set default department if not provided
       isApproved: true,
     });
 

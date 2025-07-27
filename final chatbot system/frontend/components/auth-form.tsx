@@ -35,14 +35,13 @@ export function AuthForm({ onAuthSuccess, onBackToHome }: AuthFormProps) {
   const [signupData, setSignupData] = useState<SignupData>({
     name: "",
     email: "",
-    password: "",
-    role: "analyst",
-    department: "",
-  })
+    password: ""
+  } as SignupData)
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [passwordStrength, setPasswordStrength] = useState<{score: number; message: string} | null>(null)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [fieldErrors, setFieldErrors] = useState<{
@@ -59,6 +58,39 @@ export function AuthForm({ onAuthSuccess, onBackToHome }: AuthFormProps) {
     const { name, value } = e.target
     setSignupData((prev) => ({ ...prev, [name]: value }))
     clearFieldError(name)
+    
+    // Check password strength in real-time
+    if (name === 'password') {
+      const result = validatePassword(value)
+      if (!result.isValid) {
+        setPasswordStrength({
+          score: 0,
+          message: result.message || 'Weak password'
+        })
+      } else {
+        // Calculate password strength score (0-4)
+        let score = 0
+        if (value.length >= 10) score++
+        if (/[A-Z]/.test(value)) score++
+        if (/[a-z]/.test(value)) score++
+        if (/[0-9]/.test(value)) score++
+        if (/[^A-Za-z0-9]/.test(value)) score++
+        
+        const strengthMessages = [
+          'Very Weak',
+          'Weak',
+          'Fair',
+          'Good',
+          'Strong',
+          'Very Strong'
+        ]
+        
+        setPasswordStrength({
+          score,
+          message: strengthMessages[Math.min(score, strengthMessages.length - 1)]
+        })
+      }
+    }
   }
 
   const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,9 +98,7 @@ export function AuthForm({ onAuthSuccess, onBackToHome }: AuthFormProps) {
     clearFieldError("confirmPassword")
   }
 
-  const handleRoleChange = (value: "analyst" | "viewer") => {
-    setSignupData((prev) => ({ ...prev, role: value }))
-  }
+
 
   const clearFieldError = (fieldName: string) => {
     if (fieldErrors[fieldName]) {
@@ -116,18 +146,17 @@ export function AuthForm({ onAuthSuccess, onBackToHome }: AuthFormProps) {
 
     if (!signupData.password) {
       errors.password = "Password is required"
-    } else if (!validatePassword(signupData.password)) {
-      errors.password = "Password must be at least 6 characters"
+    } else {
+      const passwordValidation = validatePassword(signupData.password)
+      if (!passwordValidation.isValid) {
+        errors.password = passwordValidation.message || "Password is not strong enough"
+      }
     }
 
     if (!confirmPassword) {
       errors.confirmPassword = "Please confirm your password"
     } else if (signupData.password !== confirmPassword) {
       errors.confirmPassword = "Passwords do not match"
-    }
-
-    if (!signupData.department) {
-      errors.department = "Department is required"
     }
 
     setFieldErrors(errors)
@@ -173,7 +202,7 @@ export function AuthForm({ onAuthSuccess, onBackToHome }: AuthFormProps) {
       if (response.success) {
         setSuccess(response.message || "Account created successfully!")
         // Reset form
-        setSignupData({ name: "", email: "", password: "", role: "analyst", department: "" })
+        setSignupData({ name: "", email: "", password: "" } as SignupData)
         setConfirmPassword("")
         // Switch to login tab after successful signup
         setTimeout(() => {
@@ -456,47 +485,7 @@ export function AuthForm({ onAuthSuccess, onBackToHome }: AuthFormProps) {
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor="signup-role" className="text-sm font-medium text-slate-300">
-                      Role
-                    </label>
-                    <Select value={signupData.role} onValueChange={handleRoleChange} disabled={isLoading}>
-                      <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                        <SelectValue placeholder="Select your role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="analyst">Security Analyst</SelectItem>
-                        <SelectItem value="viewer">Security Viewer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor="signup-department" className="text-sm font-medium text-slate-300">
-                      Department
-                    </label>
-                    <div className="relative">
-                      <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                      <Input
-                        id="signup-department"
-                        name="department"
-                        type="text"
-                        value={signupData.department}
-                        onChange={handleSignupInputChange}
-                        placeholder="Enter your department"
-                        className={`pl-10 bg-slate-700/50 border-slate-600 text-white placeholder-slate-400 focus:border-cyan-500 ${
-                          fieldErrors.department ? "border-red-500 focus:border-red-500" : ""
-                        }`}
-                        disabled={isLoading}
-                      />
-                    </div>
-                    {fieldErrors.department && (
-                      <p className="text-sm text-red-400 flex items-center">
-                        <AlertCircle className="w-3 h-3 mr-1" />
-                        {fieldErrors.department}
-                      </p>
-                    )}
-                  </div>
 
                   <Button
                     type="submit"

@@ -154,7 +154,7 @@ let AuthService = class AuthService {
             email,
             password: hashedPassword,
             role: role,
-            department,
+            department: department || 'General',
             isApproved: true,
         });
         await this.userRepository.save(newUser);
