@@ -1,4 +1,4 @@
-# AI-Powered Security Chatbot System
+# AI-Powered Security Chatbot System and login anomaly detection
 
 A full-stack application featuring user authentication and an AI-powered chatbot for security-related assistance.
 
