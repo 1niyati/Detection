@@ -180,8 +180,8 @@ export function saveUserSession(user: User): void {
     sessionStorage.setItem("sentinel_token", user.token);
   }
 
-  // Also set a shorter expiration time (2 hours instead of 24)
-  const expirationTime = Date.now() + 2 * 60 * 60 * 1000 // 2 hours
+  // Set session expiration to match JWT token (7 days)
+  const expirationTime = Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days
   sessionStorage.setItem("sentinel_session_expires", expirationTime.toString())
 }
 
@@ -238,7 +238,7 @@ export function isSessionValid(): boolean {
 export function extendSession(): void {
   const userStr = sessionStorage.getItem("sentinel_user")
   if (userStr && isSessionValid()) {
-    const expirationTime = Date.now() + 2 * 60 * 60 * 1000 // Extend by 2 hours
+    const expirationTime = Date.now() + 7 * 24 * 60 * 60 * 1000 // Extend by 7 days to match JWT token
     sessionStorage.setItem("sentinel_session_expires", expirationTime.toString())
   }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -120,7 +120,7 @@ export function SecurityDashboard() {
     role: "viewer",
   })
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     // This is split out to be reusable
     const session = getUserSession()
     if (!session?.token) return
@@ -136,9 +136,9 @@ export function SecurityDashboard() {
       }))
       setUsers(transformedUsers)
     }
-  }
+  }, [])
 
-  const fetchActivities = async () => {
+  const fetchActivities = useCallback(async () => {
     const session = getUserSession()
     if (!session?.token) return
     try {
@@ -154,9 +154,9 @@ export function SecurityDashboard() {
       // Not showing this error in the main error state to avoid blocking the whole dashboard
       console.error("Failed to fetch recent activities:", err);
     }
-  };
+  }, []);
 
-  const fetchSocStats = async (date: Date) => {
+  const fetchSocStats = useCallback(async (date: Date) => {
     const session = getUserSession()
     if (!session?.token) return
     try {
@@ -172,45 +172,56 @@ export function SecurityDashboard() {
     } catch (err) {
       console.error("Failed to fetch SOC stats:", err);
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true)
-      setError(null)
-      const session = getUserSession()
-      if (!session?.token) {
-        setError("Authentication token not found. Please log in again.")
-        setIsLoading(false)
-        return
-      }
-
-      try {
-        // Fetch stats and users together initially
-        const statsResponse = await fetch("/api/admin/dashboard-stats", {
-          headers: { Authorization: `Bearer ${session.token}` },
-        })
-
-        if (!statsResponse.ok) {
-          throw new Error("Failed to fetch dashboard stats.")
-        }
-        const statsData = await statsResponse.json()
-        setStats(statsData)
-        await fetchUsers() // fetch users
-        await fetchActivities() // fetch activities
-      } catch (err: any) {
-        setError(err.message || "An unexpected error occurred.")
-      } finally {
-        setIsLoading(false)
-      }
+  // Memoize the fetch functions to prevent unnecessary re-renders
+  const fetchData = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    const session = getUserSession()
+    if (!session?.token) {
+      setError("Authentication token not found. Please log in again.")
+      setIsLoading(false)
+      return
     }
 
-    fetchData()
-  }, [])
+    try {
+      // Fetch stats and users together initially
+      const statsResponse = await fetch("/api/admin/dashboard-stats", {
+        headers: { Authorization: `Bearer ${session.token}` },
+      })
+
+      if (!statsResponse.ok) {
+        throw new Error("Failed to fetch dashboard stats.")
+      }
+      const statsData = await statsResponse.json()
+      setStats(statsData)
+      await fetchUsers() // fetch users
+      await fetchActivities() // fetch activities
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred.")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [fetchUsers, fetchActivities])
+
+  // Main data fetching effect
+  useEffect(() => {
+    let isMounted = true;
+    
+    if (isMounted) {
+      fetchData();
+    }
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchData])
 
   useEffect(() => {
     fetchSocStats(socDate)
-  }, [socDate])
+  }, [socDate, fetchSocStats])
 
   const handleCreateUser = async () => {
     const session = getUserSession()
