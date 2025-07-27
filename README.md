@@ -31,12 +31,26 @@ A full-stack application featuring user authentication and an AI-powered chatbot
   - React Hook Form
   - SWR for data fetching
 
-- **Backend**:
+- **Backend (Chatbot System)**:
   - NestJS
   - TypeORM
   - PostgreSQL
   - JWT Authentication
   - OpenAI API Integration
+
+**Backend (Detection/Anomaly System)**:
+  - FastAPI (Python)
+  - SQLAlchemy ORM
+  - PostgreSQL
+  - passlib (bcrypt) for password hashing
+  - Pydantic for data validation
+  - Machine Learning model (scikit-learn, joblib) for login anomaly detection
+
+### Detection System Anomaly Detection Logic
+- User-specific login time: Flags logins as unusual if the login hour is outside the user’s typical window (average ± max(2, 2×std deviation) of previous successful login hours).
+- New IP/Browser: Flags if the login is from a new IP address or browser family.
+- ML Model: A machine learning model analyzes login features for anomalies.
+- Hybrid Decision: If the ML model or rule-based score is high, the login is flagged as an anomaly and the user is warned.
 
 ## 🛠️ Prerequisites
 

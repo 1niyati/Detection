@@ -26,7 +26,7 @@ export async function signup(prevState: FormState, formData: FormData): Promise<
 
   try {
     // Call the local backend server directly
-    const response = await fetch(`https://f7043b0e5985.ngrok-free.app/auth/signup`, {
+    const response = await fetch(`https://baeca9f5ad4a.ngrok-free.app/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password }),
@@ -65,7 +65,7 @@ export async function login(prevState: FormState, formData: FormData): Promise<F
 
   try {
     // Call the local backend server directly
-    const response = await fetch(`https://f7043b0e5985.ngrok-free.app/auth/login`, {
+    const response = await fetch(`https://baeca9f5ad4a.ngrok-free.app/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, user_agent }), // Send user_agent to backend

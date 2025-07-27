@@ -114,8 +114,20 @@ def create_features_for_live_login(user_agent_from_body: str | None, db: Session
     # Add back all the features your current model expects
     day_of_week = now.weekday()
     is_weekend = 1 if day_of_week >= 5 else 0
-    # Also include the unusual hour feature
-    is_unusual_hour = 1 if login_hour < 9 or login_hour >= 18 else 0
+    # --- User-specific unusual hour detection ---
+    past_hours = [item.timestamp.hour for item in history if item.login_successful]
+    if len(past_hours) >= 3:
+        from statistics import mean, stdev, StatisticsError
+        try:
+            avg_hour = mean(past_hours)
+            std_hour = stdev(past_hours)
+            lower = max(0, int(avg_hour - max(2, 2*std_hour)))
+            upper = min(23, int(avg_hour + max(2, 2*std_hour)))
+            is_unusual_hour = 1 if not (lower <= login_hour <= upper) else 0
+        except StatisticsError:
+            is_unusual_hour = 0
+    else:
+        is_unusual_hour = 0
 
     feature_data = {
         'browser': [browser], 'device_type': [device_type], 'operating_system': [operating_system],
