@@ -3,8 +3,11 @@ services:
   - type: web
     name: chatbot-backend
     env: node
-    buildCommand: cd backend && npm install && npm run build
-    startCommand: cd backend && npm run start:prod
+    plan: free
+    buildCommand: |
+      cd backend && npm install && npm run build
+    startCommand: |
+      cd backend && npm run start:prod
     envVars:
       - key: NODE_ENV
         value: production
@@ -17,7 +20,6 @@ services:
           name: chatbot-db
           property: connectionString
     healthCheckPath: /health
-    plan: free
 
 databases:
   - name: chatbot-db
