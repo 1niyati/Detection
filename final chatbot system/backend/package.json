@@ -4,7 +4,9 @@
   "main": "dist/main.js",
   "scripts": {
     "start": "nest start",
-    "start:dev": "nest start --watch"
+    "start:dev": "nest start --watch",
+    "build": "nest build",
+    "start:prod": "node dist/main.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.22",
