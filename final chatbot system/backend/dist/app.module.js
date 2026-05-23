@@ -12,7 +12,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const config_1 = require("@nestjs/config");
 const auth_module_1 = require("./auth/auth.module");
 const chat_module_1 = require("./chat/chat.module");
-const admin_module_1 = require("./admin/admin.module"); // Import AdminModule
+const admin_module_1 = require("./admin/admin.module");
 const chat_session_entity_1 = require("./chat/entities/chat-session.entity");
 const chat_message_entity_1 = require("./chat/entities/chat-message.entity");
 const user_entity_1 = require("./auth/entities/user.entity");
@@ -41,7 +41,7 @@ AppModule = __decorate([
                 }),
                 inject: [config_1.ConfigService],
             }),
-            // Second connection for 'application' database
+            // Second connection for 'application' database (SOC)
             typeorm_1.TypeOrmModule.forRootAsync({
                 name: 'applicationConnection',
                 imports: [config_1.ConfigModule],
@@ -53,14 +53,14 @@ AppModule = __decorate([
                     password: configService.get('DB_PASSWORD'),
                     database: 'application',
                     entities: [login_activity_entity_1.LoginActivity, soc_user_entity_1.SocUser],
-                    synchronize: false,
+                    synchronize: true, // ✅ changed from false
                 }),
                 inject: [config_1.ConfigService],
             }),
             auth_module_1.AuthModule,
             chat_module_1.ChatModule,
             admin_module_1.AdminModule,
-            soc_module_1.SocModule, // Add AdminModule here
+            soc_module_1.SocModule,
         ],
         controllers: [],
         providers: [],

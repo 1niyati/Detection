@@ -95,7 +95,7 @@ export function LandingPage({ onGetStarted, onLearnMore }: LandingPageProps) {
               <Shield className="w-8 h-8 text-cyan-400" />
               <div className="absolute inset-0 w-8 h-8 bg-cyan-400/20 rounded-full blur-md"></div>
             </div>
-            <span className="text-2xl font-bold text-white">SENTINEL SOC</span>
+            <span className="text-2xl font-bold text-white">Defender SOC</span>
             <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 text-xs">
               AI-Powered
             </Badge>
@@ -303,7 +303,7 @@ export function LandingPage({ onGetStarted, onLearnMore }: LandingPageProps) {
               Meet
               <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
                 {" "}
-                CyberBot
+                CyberDefender
               </span>
               <br />
               Your AI Security Assistant
@@ -324,7 +324,7 @@ export function LandingPage({ onGetStarted, onLearnMore }: LandingPageProps) {
                     <Bot className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-white font-medium">CyberBot AI Security Assistant</h3>
+                    <h3 className="text-white font-medium">CyberDefender AI Security Assistant</h3>
                     <div className="flex items-center space-x-2">
                       <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                       <span className="text-xs text-slate-400">Online & Ready</span>
@@ -394,7 +394,7 @@ export function LandingPage({ onGetStarted, onLearnMore }: LandingPageProps) {
                   <Lock className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-white mb-2">Full AI Assistant Access</h3>
                   <p className="text-slate-300 mb-6 max-w-md">
-                    Sign up to unlock the complete CyberBot AI experience with advanced threat analysis, real-time
+                    Sign up to unlock the complete CyberDefender AI experience with advanced threat analysis, real-time
                     security insights, and personalized recommendations.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -563,7 +563,7 @@ export function LandingPage({ onGetStarted, onLearnMore }: LandingPageProps) {
               </span>
             </h2>
             <p className="text-xl text-slate-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Join security teams worldwide who trust SENTINEL SOC for advanced threat detection, real-time monitoring,
+              Join security teams worldwide who trust Defender SOC for advanced threat detection, real-time monitoring,
               and intelligent incident response.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -689,7 +689,7 @@ export function LandingPage({ onGetStarted, onLearnMore }: LandingPageProps) {
           <div className="pt-6 border-t border-slate-700/50">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
               <div className="text-slate-400 text-sm">
-                <div>© 2024 SENTINEL SOC. All rights reserved.</div>
+                <div>© 2024 Defender SOC. All rights reserved.</div>
                 <div className="mt-1">Protecting enterprises worldwide since 2020</div>
               </div>
 

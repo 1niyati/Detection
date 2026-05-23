@@ -6,7 +6,7 @@ import { Inter } from 'next/font/google'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'CyberBot - SOC Analyst Platform',
+  title: 'CyberDefender - SOC Analyst Platform',
   description: 'Advanced SOC analyst dashboard for real-time security monitoring',
   generator: 'v0.dev',
 }

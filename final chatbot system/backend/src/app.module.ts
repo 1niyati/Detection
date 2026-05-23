@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
-import { AdminModule } from './admin/admin.module'; // Import AdminModule
+import { AdminModule } from './admin/admin.module';
 import { ChatSession } from './chat/entities/chat-session.entity';
 import { ChatMessage } from './chat/entities/chat-message.entity';
 import { User } from './auth/entities/user.entity';
@@ -14,6 +14,7 @@ import { SocUser } from './soc/entities/soc-user.entity';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+
     // Default Connection
     TypeOrmModule.forRootAsync({
       name: 'default',
@@ -30,7 +31,8 @@ import { SocUser } from './soc/entities/soc-user.entity';
       }),
       inject: [ConfigService],
     }),
-    // Second connection for 'application' database
+
+    // Second connection for 'application' database (SOC)
     TypeOrmModule.forRootAsync({
       name: 'applicationConnection',
       imports: [ConfigModule],
@@ -42,14 +44,15 @@ import { SocUser } from './soc/entities/soc-user.entity';
         password: configService.get<string>('DB_PASSWORD'),
         database: 'application',
         entities: [LoginActivity, SocUser],
-        synchronize: false,
+        synchronize: true, // ✅ changed from false
       }),
       inject: [ConfigService],
     }),
+
     AuthModule,
     ChatModule,
     AdminModule,
-    SocModule, // Add AdminModule here
+    SocModule,
   ],
   controllers: [],
   providers: [],

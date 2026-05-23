@@ -123,7 +123,7 @@ export default function SentinelSOC() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <Shield className="w-12 h-12 text-cyan-400 mx-auto mb-4 animate-pulse" />
-          <p className="text-white">Loading SENTINEL SOC...</p>
+          <p className="text-white">Loading Defender SOC...</p>
         </div>
       </div>
     )
@@ -148,7 +148,7 @@ export default function SentinelSOC() {
   const availableTabs = [
     ...(canAccessDashboard(user) ? [{ id: "dashboard", label: "Dashboard", icon: BarChart3 }] : []),
     ...(canAccessSocDashboard(user) ? [{ id: "soc", label: "SOC Dashboard", icon: ShieldCheck }] : []),
-    { id: "chat", label: "CyberBot", icon: MessageSquare },
+    { id: "chat", label: "CyberDefender", icon: MessageSquare },
     { id: "profile", label: "Profile", icon: User },
   ]
 
@@ -159,7 +159,7 @@ export default function SentinelSOC() {
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Shield className="w-8 h-8 text-blue-500" />
-            <span className="text-2xl font-bold text-slate-100">SENTINEL SOC</span>
+            <span className="text-2xl font-bold text-slate-100">Defender SOC</span>
             <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 text-xs hidden md:block">
               AI-Powered
             </Badge>
@@ -249,7 +249,7 @@ export default function SentinelSOC() {
               <MessageSquare className="h-4 w-4 text-cyan-400" />
               <AlertDescription className="text-cyan-400 text-sm">
                 Welcome {user.name.split(" ")[0]}! As a{" "}
-                {user.role === "analyst" ? "Security Analyst" : "Security Viewer"}, you have full access to CyberBot AI
+                {user.role === "analyst" ? "Security Analyst" : "Security Viewer"}, you have full access to CyberDefender AI
                 Assistant for security analysis and support.
               </AlertDescription>
             </Alert>

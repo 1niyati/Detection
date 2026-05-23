@@ -17,11 +17,11 @@ export function Footer() {
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <Mail className="w-4 h-4 text-cyan-400" />
-                <span className="text-slate-400 text-sm">contact@sentinelsoc.com</span>
+                <span className="text-slate-400 text-sm">niyatipachhai@gmail.com</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Phone className="w-4 h-4 text-cyan-400" />
-                <span className="text-slate-400 text-sm">+1 (555) 123-4567</span>
+                <span className="text-slate-400 text-sm">+977 9748725299</span>
               </div>
               <div className="flex items-start space-x-2">
                 <MapPin className="w-4 h-4 text-cyan-400 mt-0.5" />
@@ -107,7 +107,7 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-slate-700/50">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
             <div className="text-slate-400 text-sm">
-              <div>© 2024 SENTINEL SOC. All rights reserved.</div>
+              <div>© 2024 Defender SOC. All rights reserved.</div>
               <div className="mt-1">Protecting enterprises worldwide since 2020</div>
             </div>
 

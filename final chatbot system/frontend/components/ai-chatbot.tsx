@@ -292,7 +292,7 @@ export function AIChatbot() {
                 <Bot className="w-5 h-5 text-white" />
               </div>
               <div className="flex flex-col">
-                  CyberBot AI Assistant
+                  CyberDefender AI Assistant
                 <span className="text-xs text-slate-400 font-normal">Your AI-Powered SOC Co-pilot</span>
               </div>
             </CardTitle>
@@ -306,7 +306,7 @@ export function AIChatbot() {
                     <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center shadow-lg">
                       <Bot className="w-8 h-8 text-white" />
                     </div>
-                    <h3 className="text-lg font-semibold text-white mb-2">Welcome to CyberBot!</h3>
+                    <h3 className="text-lg font-semibold text-white mb-2">Welcome to CyberDefender!</h3>
                     <p className="text-slate-400 text-sm max-w-sm mx-auto">
                       I'm your AI assistant for cybersecurity analysis and threat detection. How can I help you today?
                     </p>
@@ -323,7 +323,7 @@ export function AIChatbot() {
                 {isLoading && (
                   <div className="flex items-center gap-2 text-slate-400 text-sm">
                     <Bot className="w-4 h-4 animate-spin" />
-                    CyberBot is thinking...
+                    CyberDefender is thinking...
                   </div>
                 )}
               </div>

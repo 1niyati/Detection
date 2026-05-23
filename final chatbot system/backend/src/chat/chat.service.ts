@@ -5,7 +5,7 @@ import axios from 'axios';
 import * as dotenv from 'dotenv';
 import { ChatSession } from './entities/chat-session.entity';
 import { ChatMessage } from './entities/chat-message.entity';
-import { SocService } from '../soc/soc.service'; // Import SocService
+import { SocService } from '../soc/soc.service';
 
 dotenv.config();
 
@@ -54,61 +54,90 @@ Always maintain a professional tone and prioritize clarity in security communica
 `.trim();
 
 const SECURITY_KEYWORDS = [
-  'security', 'hack', 'vulnerability', 'threat', 'malware', 'virus',
-  'breach', 'attack', 'firewall', 'encryption', 'password', 'authentication',
-  'exploit', 'cybersecurity', 'phishing', 'ransomware', 'incident', 'alert',
-  'suspicious', 'compromise', 'unauthorized', 'detection', 'logins', 'anomaly', 'attempt', 'failed'
+  'security',
+  'hack',
+  'vulnerability',
+  'threat',
+  'malware',
+  'virus',
+  'breach',
+  'attack',
+  'firewall',
+  'encryption',
+  'password',
+  'authentication',
+  'exploit',
+  'cybersecurity',
+  'phishing',
+  'ransomware',
+  'incident',
+  'alert',
+  'suspicious',
+  'compromise',
+  'unauthorized',
+  'detection',
+  'logins',
+  'anomaly',
+  'attempt',
+  'failed',
 ];
 
 @Injectable()
 export class ChatService {
-  private readonly geminiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent';
+  private readonly geminiEndpoint =
+   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
   constructor(
     @InjectRepository(ChatSession)
     private readonly sessionRepository: Repository<ChatSession>,
     @InjectRepository(ChatMessage)
     private readonly messageRepository: Repository<ChatMessage>,
-    private readonly socService: SocService, // Inject SocService
+    private readonly socService: SocService,
   ) {}
 
   private getSpecificRecommendation(reason: string): string {
     const lowerReason = reason.toLowerCase();
-    
+
     if (lowerReason.includes('permanently blocked')) {
-        return "This account is now permanently blocked. Review the source IP of the failed attempts for potential network-level blocking.";
+      return 'This account is now permanently blocked. Review the source IP of the failed attempts for potential network-level blocking.';
     }
-    
+
     const recommendations: string[] = [];
 
     if (lowerReason.includes('new country')) {
-        recommendations.push("Confirm with the user if they are traveling or using a VPN. If not, immediate account lockout and password reset is advised.");
+      recommendations.push(
+        'Confirm with the user if they are traveling or using a VPN. If not, immediate account lockout and password reset is advised.',
+      );
     }
-    
+
     if (lowerReason.includes('new browser')) {
-        recommendations.push("Verify with the user if they recently started using a new device or browser. If not, a password reset is recommended as a precaution.");
+      recommendations.push(
+        'Verify with the user if they recently started using a new device or browser. If not, a password reset is recommended as a precaution.',
+      );
     }
-    
+
     if (lowerReason.includes('unusual time')) {
-        recommendations.push("Verify the legitimacy of this login with the user. If they don't recognize this activity, investigate further and consider a password reset.");
+      recommendations.push(
+        "Verify the legitimacy of this login with the user. If they don't recognize this activity, investigate further and consider a password reset.",
+      );
     }
 
     if (lowerReason.includes('ml model')) {
-        recommendations.push("The AI model detected a deviation from normal behavior. A manual review of the user's session data is recommended to determine the nature of the anomaly.");
+      recommendations.push(
+        "The AI model detected a deviation from normal behavior. A manual review of the user's session data is recommended to determine the nature of the anomaly.",
+      );
     }
 
     if (recommendations.length > 0) {
-        // The \n ensures the list starts on a new line, making it a nested list.
-        return "\n- " + recommendations.join('\n- ');
+      return '\n- ' + recommendations.join('\n- ');
     }
 
-    // Fallback for any other reason, though it should be rare with the current setup.
     return "A generic suspicious activity was detected. You should investigate this user's recent activity and consider temporarily disabling the account if the activity is confirmed to be malicious.";
   }
 
   private isSecurityRelatedQuery(text: string): boolean {
     const lowerText = text.toLowerCase();
-    return SECURITY_KEYWORDS.some(keyword => lowerText.includes(keyword));
+    return SECURITY_KEYWORDS.some((keyword) => lowerText.includes(keyword));
   }
 
   async getChatSessions(userId: number): Promise<ChatSession[]> {
@@ -149,32 +178,31 @@ export class ChatService {
     });
 
     if (!messageToEdit) throw new NotFoundException('Message not found');
-    if (messageToEdit.session.userId !== userId) throw new UnauthorizedException('Permission denied');
-    if (messageToEdit.role !== 'user') throw new UnauthorizedException('Can only edit user messages');
+    if (messageToEdit.session.userId !== userId)
+      throw new UnauthorizedException('Permission denied');
+    if (messageToEdit.role !== 'user')
+      throw new UnauthorizedException('Can only edit user messages');
 
-    // 1. Update the user's message
     messageToEdit.content = content;
     const updatedUserMessage = await this.messageRepository.save(messageToEdit);
 
-    // 2. Find and delete subsequent messages in the session (the old bot response)
     const subsequentMessages = await this.messageRepository.find({
       where: {
         sessionId: messageToEdit.sessionId,
         id: MoreThan(messageId),
       },
     });
+
     if (subsequentMessages.length > 0) {
       await this.messageRepository.remove(subsequentMessages);
     }
-    
-    // 3. Get the updated message history to send to the AI
-    const fullHistory = await this.messageRepository.find({
-        where: { sessionId: messageToEdit.sessionId },
-        order: { createdAt: 'ASC' },
-    });
 
-    // 4. Re-generate bot response
-    const newAssistantResponse = await this.chatWithGemini(content, userId, messageToEdit.sessionId, true);
+    const newAssistantResponse = await this.chatWithGemini(
+      content,
+      userId,
+      messageToEdit.sessionId,
+      true,
+    );
 
     return {
       userMessage: updatedUserMessage,
@@ -186,7 +214,7 @@ export class ChatService {
     newMessageContent: string,
     userId: number,
     sessionId?: string,
-    isInternalCall = false, // This helps differentiate from the edit flow
+    isInternalCall = false,
   ): Promise<{ assistantMessage: ChatMessage; sessionId: string }> {
     let session: ChatSession;
     let messageHistory: ChatMessage[] = [];
@@ -194,18 +222,18 @@ export class ChatService {
     if (sessionId) {
       const foundSession = await this.sessionRepository.findOne({ where: { id: sessionId } });
       if (!foundSession) throw new NotFoundException('Chat session not found');
-      if (foundSession.userId !== userId) throw new UnauthorizedException('Access to this session is denied');
+      if (foundSession.userId !== userId)
+        throw new UnauthorizedException('Access to this session is denied');
+
       session = foundSession;
-      // Fetch existing messages for context
       messageHistory = await this.getMessagesForSession(sessionId, userId);
     } else {
-      const title = newMessageContent.slice(0, 40) + (newMessageContent.length > 40 ? '...' : '');
+      const title =
+        newMessageContent.slice(0, 40) + (newMessageContent.length > 40 ? '...' : '');
       session = this.sessionRepository.create({ title, userId });
       await this.sessionRepository.save(session);
-      // New session, so history is empty before this message
     }
-    
-    // For external calls (not from edit), save the new user message
+
     if (!isInternalCall) {
       const userMessage = this.messageRepository.create({
         role: 'user',
@@ -215,108 +243,143 @@ export class ChatService {
       await this.messageRepository.save(userMessage);
       messageHistory.push(userMessage);
     } else {
-      // For internal calls (from edit), just add the updated content to the history for context
       messageHistory.push({
         role: 'user',
         content: newMessageContent,
         sessionId: session.id,
-        // id, createdAt etc. are not needed for the API call
       } as ChatMessage);
     }
-    
-    // Handle the "who are you" query specifically
+
     if (newMessageContent.toLowerCase().trim().includes('who are you')) {
-      const introMessage = "I’m CyberBOT, your AI-powered SOC assistant. I help to provide you with recommendations, analyze login anomalies, and answer SOC-related questions.";
-      
-      const assistantMessage = this.messageRepository.create({ 
-        role: 'assistant', 
-        content: introMessage, 
-        sessionId: session.id 
+      const introMessage =
+        'I’m CyberBOT, your AI-powered SOC assistant. I help to provide you with recommendations, analyze login anomalies, and answer SOC-related questions.';
+
+      const assistantMessage = this.messageRepository.create({
+        role: 'assistant',
+        content: introMessage,
+        sessionId: session.id,
       });
 
       await this.messageRepository.save(assistantMessage);
       return { assistantMessage, sessionId: session.id };
     }
 
-    // --- This is the new, corrected logic ---
-    const securityKeywords = ["suspicious", "anomaly", "alert", "threat", "report"];
-    const isSecurityQuery = securityKeywords.some(keyword => newMessageContent.toLowerCase().includes(keyword));
+   const securityKeywords = [
+  'suspicious', 'anomaly', 'anomalies', 'alert', 'alerts',
+  'threat', 'threats', 'report', 'detected', 'were', 'any',
+  'show', 'high', 'medium', 'low', 'risk', 'login', 'logins',
+  'hack', 'breach', 'attack', 'incident', 'flagged'
+];
+    const isSecurityQuery = securityKeywords.some((keyword) =>
+      newMessageContent.toLowerCase().includes(keyword),
+    );
     const isRecentQuery = newMessageContent.toLowerCase().includes('recent');
 
     if (isSecurityQuery) {
-        // --- New category detection logic ---
-        const knownCategories = ["new ip address", "new browser", "unusual login time"];
-        const foundCategory = knownCategories.find(cat => newMessageContent.toLowerCase().includes(cat));
+      const knownCategories = ['new ip address', 'new browser', 'unusual login time'];
+      const foundCategory = knownCategories.find((cat) =>
+        newMessageContent.toLowerCase().includes(cat),
+      );
 
-        // Use the injected service to get the summary, now with category support
-        const summary = await this.socService.getSuspiciousSummary(
-          isRecentQuery ? 'recent' : '24-hour',
-          foundCategory
-        );
-      
-        const report = summary.summary.trim();
+      const summary = await this.socService.getSuspiciousSummary(
+        isRecentQuery ? 'recent' : '24-hour',
+        foundCategory,
+      );
 
-        const assistantMessage = this.messageRepository.create({ 
-          role: 'assistant', 
-          content: report, 
-          sessionId: session.id 
-        });
+      const report = summary.summary.trim();
 
-        await this.messageRepository.save(assistantMessage);
-        return { assistantMessage, sessionId: session.id };
+      const assistantMessage = this.messageRepository.create({
+        role: 'assistant',
+        content: report,
+        sessionId: session.id,
+      });
+
+      await this.messageRepository.save(assistantMessage);
+      return { assistantMessage, sessionId: session.id };
     }
-    // --- End of new logic ---
 
-    // Prepare history for Gemini API
-    const historyForApi = messageHistory.map(msg => ({
-          role: msg.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: msg.content }]
-        }));
+    const historyForApi = messageHistory.map((msg) => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }],
+    }));
 
     const conversationContext = {
       contents: [
         {
           role: 'user',
-          parts: [{ text: GENERAL_PROMPT }]
+          parts: [{ text: GENERAL_PROMPT }],
         },
         {
           role: 'model',
-          parts: [{ text: 'Understood, I will proceed with the conversation as configured.' }]
+          parts: [{ text: 'Understood, I will proceed with the conversation as configured.' }],
         },
-        ...historyForApi
-      ]
+        ...historyForApi,
+      ],
     };
 
     try {
       console.log('Processing message:', newMessageContent);
       console.log('Security query:', isSecurityQuery);
+      console.log('GEMINI KEY FOUND:', !!process.env.GEMINI_API_KEY);
+
+      if (!process.env.GEMINI_API_KEY) {
+        throw new Error('GEMINI_API_KEY is missing from environment variables');
+      }
 
       const response = await axios.post(
         `${this.geminiEndpoint}?key=${process.env.GEMINI_API_KEY}`,
-        conversationContext,
+        {
+          contents: conversationContext.contents,
+        },
         {
           headers: {
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
-      const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      console.log('Response received:', text?.substring(0, 100) + '...');
-      
-      const assistantResponse = text ?? 'No response from Gemini.';
+      const text =
+        response.data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini.';
+
+      console.log('Response received:', text.substring(0, 100) + '...');
+
       const assistantMessage = this.messageRepository.create({
         role: 'assistant',
-        content: assistantResponse,
+        content: text,
         sessionId: session.id,
       });
+
       await this.messageRepository.save(assistantMessage);
 
       return { assistantMessage, sessionId: session.id };
     } catch (error: any) {
       console.error('Gemini API error:', error.response?.data || error.message);
-      const assistantResponse = 'Error getting response from Gemini API.';
-      const assistantMessage = this.messageRepository.create({ role: 'assistant', content: assistantResponse, sessionId: session.id });
+        let assistantResponse = 'Hello! I am CyberDefender AI, your SOC assistant. I can help you analyze security threats and login anomalies. Try asking me about suspicious activity, threats, anomalies, or alerts to get real-time security insights.';
+
+if (error.response?.status === 404) {
+  assistantResponse = 'Gemini model endpoint was not found. Please verify the configured model name.';
+} else if (error.message?.includes('GEMINI_API_KEY is missing')) {
+  assistantResponse = 'Gemini API key is missing. Add GEMINI_API_KEY to backend/.env and restart the backend.';
+}
+      if (error.response?.status === 400) {
+        assistantResponse = 'Gemini request format was rejected. Please check the model and payload.';
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
+        assistantResponse =
+          'Gemini API key is invalid, expired, or has no remaining quota. Please replace GEMINI_API_KEY in backend/.env.';
+      } else if (error.response?.status === 404) {
+        assistantResponse =
+          'Gemini model endpoint was not found. Please verify the configured model name.';
+      } else if (error.message?.includes('GEMINI_API_KEY is missing')) {
+        assistantResponse =
+          'Gemini API key is missing. Add GEMINI_API_KEY to backend/.env and restart the backend.';
+      }
+
+      const assistantMessage = this.messageRepository.create({
+        role: 'assistant',
+        content: assistantResponse,
+        sessionId: session.id,
+      });
+
       await this.messageRepository.save(assistantMessage);
       return { assistantMessage, sessionId: session.id };
     }

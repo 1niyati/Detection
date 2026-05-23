@@ -102,7 +102,7 @@ def create_features_for_live_login(user_agent_from_body: str | None, db: Session
     browser = ua.browser.family
     device_type = "Desktop" if ua.is_pc else "Mobile" if ua.is_mobile else "Tablet" if ua.is_tablet else "Other"
     operating_system = ua.os.family
-
+#ss
     # Get history for browser/ip check, but use passed-in login_frequency
     history = get_user_login_history(db, user.id)
     seen_ips = {item.ip_address for item in history}

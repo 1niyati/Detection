@@ -43,7 +43,7 @@ export function AboutPage({ onBack }: AboutPageProps) {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Shield className="w-8 h-8 text-cyan-400" />
-            <span className="text-2xl font-bold text-white">SENTINEL SOC</span>
+            <span className="text-2xl font-bold text-white">Defender SOC</span>
             <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 text-xs">
               AI-Powered
             </Badge>
@@ -83,7 +83,7 @@ export function AboutPage({ onBack }: AboutPageProps) {
       {/* Hero Section */}
       <section id="home" className="container mx-auto px-4 pt-12 pb-8 text-center">
         <div className="max-w-4xl mx-auto">
-          <Badge className="bg-cyan-600/20 text-cyan-400 border-cyan-500/30 mb-6">About SENTINEL SOC</Badge>
+          <Badge className="bg-cyan-600/20 text-cyan-400 border-cyan-500/30 mb-6">About Defender SOC</Badge>
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-8">
             <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
               AI-Powered Security
@@ -98,7 +98,7 @@ export function AboutPage({ onBack }: AboutPageProps) {
       <section className="container mx-auto px-4 pb-16">
         <div className="max-w-4xl mx-auto text-center">
           <p className="text-xl text-slate-300 leading-relaxed mb-8">
-            SENTINEL SOC is a next-generation Security Operations Center platform that combines artificial intelligence
+            Defender SOC is a next-generation Security Operations Center platform that combines artificial intelligence
             with advanced threat detection capabilities. Our comprehensive platform empowers security teams to identify,
             analyze, and respond to cyber threats faster and more effectively than ever before.
           </p>
@@ -265,7 +265,7 @@ export function AboutPage({ onBack }: AboutPageProps) {
       {/* Call to Action */}
       <section className="container mx-auto px-4 py-20">
         <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-12 text-center">
-          <h2 className="text-4xl font-bold text-white mb-6">Experience SENTINEL SOC</h2>
+          <h2 className="text-4xl font-bold text-white mb-6">Experience Defender SOC</h2>
           <p className="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
             Ready to enhance your organization's security with our AI-powered SOC platform? Explore advanced threat
             detection, real-time monitoring, and intelligent incident response capabilities.
@@ -294,7 +294,7 @@ export function AboutPage({ onBack }: AboutPageProps) {
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <Mail className="w-4 h-4 text-cyan-400" />
-                  <span className="text-slate-300 text-sm">contact@sentinelsoc.com</span>
+                  <span className="text-slate-300 text-sm">niyatiipachhai@gmail.com</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <Phone className="w-4 h-4 text-cyan-400" />
@@ -384,7 +384,7 @@ export function AboutPage({ onBack }: AboutPageProps) {
           <div className="pt-8 border-t border-slate-700/50">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0 mb-6">
               <div className="text-slate-400 text-sm">
-                <div>© 2024 SENTINEL SOC. All rights reserved.</div>
+                <div>© 2024 Defender SOC. All rights reserved.</div>
                 <div className="mt-1">Protecting enterprises worldwide since 2020</div>
               </div>
 

@@ -162,7 +162,7 @@ export function ContactSection() {
                 <Mail className="w-6 h-6 text-cyan-400 mt-1 flex-shrink-0" />
                 <div>
                   <h3 className="text-white font-medium">Email</h3>
-                  <p className="text-slate-300">contact@sentinelsoc.com</p>
+                  <p className="text-slate-300">niyatipachhai@gmail.com</p>
                 </div>
               </div>
 
@@ -170,7 +170,7 @@ export function ContactSection() {
                 <Phone className="w-6 h-6 text-cyan-400 mt-1 flex-shrink-0" />
                 <div>
                   <h3 className="text-white font-medium">Phone</h3>
-                  <p className="text-slate-300">+1 (555) 123-4567</p>
+                  <p className="text-slate-300">9748725299</p>
                 </div>
               </div>
 

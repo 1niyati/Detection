@@ -103,7 +103,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
           <div className="flex items-center justify-center mb-4">
             <Shield className="w-12 h-12 text-cyan-400" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">SENTINEL SOC</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Defender SOC</h1>
           <p className="text-slate-400">Secure Access Portal</p>
         </div>
 
@@ -237,7 +237,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
         {/* Footer */}
         <div className="text-center text-slate-500 text-sm">
-          <p>© 2024 SENTINEL SOC. All rights reserved.</p>
+          <p>© 2024 Defender SOC. All rights reserved.</p>
           <p className="mt-1">Secure • Reliable • Advanced</p>
         </div>
       </div>

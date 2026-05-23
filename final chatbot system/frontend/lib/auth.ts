@@ -39,7 +39,7 @@ const adminUser: User & { password: string } = {
   password: "admin123",
   name: "System Administrator",
   role: "admin",
-  department: "SENTINEL SOC Administration",
+  department: "Defender SOC Administration",
   lastLogin: new Date(),
   isApproved: true,
   createdAt: new Date("2024-01-01"),

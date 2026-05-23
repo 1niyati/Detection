@@ -253,9 +253,9 @@ export function AuthForm({ onAuthSuccess, onBackToHome }: AuthFormProps) {
                 <div className="flex items-start space-x-2">
                   <AlertCircle className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
                   <div className="text-sm">
-                    <p className="text-blue-400 font-medium mb-1">New to SENTINEL SOC?</p>
+                    <p className="text-blue-400 font-medium mb-1">New to Defender SOC?</p>
                     <p className="text-slate-300 text-xs">
-                      Security Analysts and Viewers must create an account first to access CyberBot AI Assistant. Only
+                      Security Analysts and Viewers must create an account first to access CyberDefender AI Assistant. Only
                       administrators have pre-configured access.
                     </p>
                   </div>

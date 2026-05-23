@@ -228,7 +228,114 @@ export function SOCAnalystDashboard() {
   }
 
   const COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e"]
+  const downloadFile = (content: string, fileName: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType })
+    const url = window.URL.createObjectURL(blob)
 
+    const link = document.createElement("a")
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    window.URL.revokeObjectURL(url)
+  }
+
+  const escapeCsv = (value: unknown) => {
+    const stringValue = value == null ? "" : String(value)
+    return `"${stringValue.replace(/"/g, '""')}"`
+  }
+
+  const handleExport = () => {
+    const dateLabel = format(selectedDate, "yyyy-MM-dd")
+
+    if (!metrics) {
+  alert("No data available to export.")
+  return
+}
+
+    const metricsRows = [
+      ["Metric", "Value"],
+      ["Date", dateLabel],
+      ["Total Logins (24h)", metrics.totalLogins24h],
+      ["Anomalous Logins (24h)", metrics.anomalousLogins24h],
+      ["Active Users", metrics.activeUsers],
+      ["New Devices (24h)", metrics.newDevices24h],
+      ["Critical Alerts", metrics.criticalAlerts],
+      ["Average Risk Score", metrics.avgRiskScore],
+    ]
+
+    const alertsRows = [
+      ["ID", "Timestamp", "Type", "Severity", "Title", "Description", "Username", "IP Address", "Country", "Status"],
+      ...filteredAlerts.map((alert) => [
+        alert.id,
+        alert.timestamp instanceof Date ? alert.timestamp.toISOString() : alert.timestamp,
+        alert.type,
+        alert.severity,
+        alert.title,
+        alert.description,
+        alert.username ?? "",
+        alert.ipAddress ?? "",
+        alert.country ?? "",
+        alert.status,
+      ]),
+    ]
+
+    const attemptsRows = [
+      [
+        "ID",
+        "Timestamp",
+        "Username",
+        "Email",
+        "IP Address",
+        "Device",
+        "Browser",
+        "Success",
+        "Risk Level",
+        "Risk Score",
+        "Anomaly Reasons",
+        "New Device",
+        "New Location",
+        "VPN Detected",
+        "TOR",
+        "Failed Attempts",
+      ],
+      ...filteredLoginAttempts.map((attempt) => [
+        attempt.id,
+        attempt.timestamp instanceof Date ? attempt.timestamp.toISOString() : attempt.timestamp,
+        attempt.username,
+        attempt.email,
+        attempt.ipAddress,
+        attempt.device,
+        attempt.browser,
+        attempt.success ? "Yes" : "No",
+        attempt.riskLevel,
+        attempt.riskScore,
+        attempt.anomalyReasons.join(" | "),
+        attempt.isNewDevice ? "Yes" : "No",
+        attempt.isNewLocation ? "Yes" : "No",
+        attempt.vpnDetected ? "Yes" : "No",
+        attempt.tor ? "Yes" : "No",
+        attempt.failedAttempts,
+      ]),
+    ]
+
+    const sections = [
+      "CYBERDEFENDER SOC EXPORT",
+      "",
+      ...metricsRows.map((row) => row.map(escapeCsv).join(",")),
+      "",
+      "SECURITY ALERTS",
+      ...alertsRows.map((row) => row.map(escapeCsv).join(",")),
+      "",
+      "LOGIN ATTEMPTS",
+      ...attemptsRows.map((row) => row.map(escapeCsv).join(",")),
+    ]
+
+    const csvContent = sections.join("\n")
+    downloadFile(csvContent, `soc-export-${dateLabel}.csv`, "text/csv;charset=utf-8;")
+  }
   if (loading || !metrics) {
     return (
       <div className="p-6 space-y-6">
@@ -298,7 +405,12 @@ export function SOCAnalystDashboard() {
               />
             </PopoverContent>
           </Popover>
-          <Button variant="outline" size="sm" className="border-slate-600 text-slate-300 bg-transparent">
+                   <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            className="border-slate-600 text-slate-300 bg-transparent"
+          >
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>

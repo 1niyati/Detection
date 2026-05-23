@@ -16,7 +16,7 @@ Assistant: I'm doing well, thank you for asking! How can I assist you today?
 `.trim()
 
 const SECURITY_PROMPT = `
-You are CyberBot, an advanced AI Security Assistant in SENTINEL SOC. 
+You are CyberDefender, an advanced AI Security Assistant in Defender SOC. 
 You are designed to:
 - Detect login anomalies and suspicious behavior
 - Classify threats as High, Medium, or Low risk
